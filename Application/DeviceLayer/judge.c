@@ -5,29 +5,29 @@ uint8_t flag;
 void Shooting_Fri_Speed_Adapt(void)
 {
 	
-/*ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½**********************************************************/
+/*ÓÃ»§¶¨Òå²ÎÊý**********************************************************/
 
-#define SPEED_SAVE_NUM 2			  // ï¿½Ù¶È±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-	const float add_kp = 7.f;		  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-	const float minus_kp = 7.f;		  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+#define SPEED_SAVE_NUM 2			  // ËÙ¶È±£´æ¸öÊý
+	const float add_kp = 7.f;		  // Ôö¼ÓÔöÒæ
+	const float minus_kp = 7.f;		  // ¼õÉÙÔöÒæ
 	#if HERO_TYPE==2
-	const float over_blind_err = 0.2; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú²ï¿½ï¿½ï¿½ï¿½ï¿½
+	const float over_blind_err = 0.2; // ³¬¹ý¶àÉÙÄÚ²»µ÷Õû
 	#else
-	const float over_blind_err = 0.2; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú²ï¿½ï¿½ï¿½ï¿½ï¿½
+	const float over_blind_err = 0.2; // ³¬¹ý¶àÉÙÄÚ²»µ÷Õû
 	#endif
 	
-	const float less_blind_err = 0.2; // ï¿½ï¿½ï¿½Ú¶ï¿½ï¿½ï¿½ï¿½Ú²ï¿½ï¿½ï¿½ï¿½ï¿½
-	const float max_adapt_range = 100; // ï¿½ï¿½óµ¥´Îµï¿½ï¿½ï¿½ï¿½ï¿½
+	const float less_blind_err = 0.2; // µÍÓÚ¶àÉÙÄÚ²»µ÷Õû
+	const float max_adapt_range = 100; // ×î´óµ¥´Îµ÷ÕûÁ¿
 
-	/*ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½**************************************************************/
+	/*º¯Êý±äÁ¿**************************************************************/
 	static uint8_t normal_speed_flag;	
 
-	static float last_speed[SPEED_SAVE_NUM] = {0};					  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½Ù¶ï¿½ï¿½ï¿½ï¿½ï¿½
-	float now_speed = Board_Rx_Info.bullet_speed; // ï¿½ï¿½Ç°ï¿½Ù¶ï¿½
+	static float last_speed[SPEED_SAVE_NUM] = {0};					  // ±£´æÉÏÒ»·¢ËÙ¶ÈÊý×é
+	float now_speed = Board_Rx_Info.bullet_speed; // µ±Ç°ËÙ¶È
 
-	uint8_t over_cnt = 0, less_cnt = 0;								  // ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½Ù¶È¼ï¿½ï¿½ï¿½ï¿½ï¿½Ð¡ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½Ù¶È¼ï¿½ï¿½ï¿½
+	uint8_t over_cnt = 0, less_cnt = 0;								  // ´óÓÚÄ¿±êËÙ¶È¼ÆÊý£¬Ð¡ÓÚÄ¿±êËÙ¶È¼ÆÊý
 	
-    /*Ö´ï¿½Ðµï¿½ï¿½Ùµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½*****************************************************/
+    /*Ö´ÐÐµ¯ËÙµ÷ÕûµÄÌõ¼þ*****************************************************/
 	
 //	if(communicate.car_data0_tx_info->car_state.bit.is_open_adapt==0)
 //	{
@@ -37,13 +37,13 @@ void Shooting_Fri_Speed_Adapt(void)
 //#ifndef FriSpeedAdaptEnabled
 //	return;
 //#endif
-	if (Board_Rx_Info.flag.bit.is_fric_on != 1)		  // ï¿½ï¿½ï¿½ï¿½Î´ï¿½ï¿½Ê¼ï¿½ï¿½
-		if (shoot.base_info.fric_info.target_fric_B_L_speed == 0) // Ä¦ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½Ù¶ï¿½Îª0
-				if (my_abs(Board_Rx_Info.bullet_speed - shoot.config.target_bullet_speed) > 3) // ï¿½Õµï¿½ï¿½ï¿½ï¿½Ý¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	if (Board_Rx_Info.is_fric_on != 1)		  // ·¢ÉäÎ´³õÊ¼»¯
+		if (shoot.base_info.fric_info.target_fric_B_L_speed == 0) // Ä¦²ÁÂÖÄ¿±êËÙ¶ÈÎª0
+				if (my_abs(Board_Rx_Info.bullet_speed - shoot.config.target_bullet_speed) > 3) // ÊÕµ½Êý¾Ý¹ýÓÚÀëÆ×
 				{
 					return;
 				}
-	//ï¿½ï¿½ï¿½ï¿½ï¿½Ù£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â½ï¿½
+	//³¬µ¯ËÙ£¡£¡£¡´óÁ¿ÏÂ½µ
 	if(now_speed>12.f)
 	{
 		shoot.config.target_B_friction_speed -= 20;
@@ -51,12 +51,12 @@ void Shooting_Fri_Speed_Adapt(void)
 		return;
 	}
 	
-	/*ï¿½ï¿½ï¿½ï¿½Ä¿Ç°ï¿½æ´¢ï¿½ï¿½ï¿½ï¿½ï¿½ïµ¯ï¿½Ùµï¿½ï¿½ï¿½ï¿½******************************************/
+	/*¼ÆËãÄ¿Ç°´æ´¢Êý×éÀïµ¯ËÙµÄÇé¿ö******************************************/
 	for (uint8_t i = 0; i < SPEED_SAVE_NUM; i++)
 	{
 		if (last_speed[i] == 0)
 		{
-			// ï¿½ï¿½ï¿½ï¿½Òµï¿½Ò»ï¿½ï¿½Ôªï¿½ï¿½Îªï¿½ã£¬ï¿½ï¿½ï¿½ï¿½Ñ­ï¿½ï¿½
+			// Èç¹ûÕÒµ½Ò»¸öÔªËØÎªÁã£¬Ìø³öÑ­»·
 			continue;
 		}
 		else if (last_speed[i] > shoot.config.target_bullet_speed)
@@ -69,21 +69,21 @@ void Shooting_Fri_Speed_Adapt(void)
 		}
 	}
 
-	/*ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¦ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½***********************************************/
-	//Ê©ï¿½ï¿½ï¿½Ø´ï¿½ï¿½ï¿½ï¿½ï¿½
-	if (now_speed - shoot.config.target_bullet_speed > over_blind_err) // ï¿½Ù¶È´ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½Ù¶ï¿½
+	/*¸ù¾ÝÇé¿öµ÷ÕûÄ¦²ÁÂÖËÙ¶È***********************************************/
+	//Ê©ÃÜÌØ´¥·¢Æ÷
+	if (now_speed - shoot.config.target_bullet_speed > over_blind_err) // ËÙ¶È´óÓÚÄ¿±êËÙ¶È
 	{
-		if (over_cnt * minus_kp > max_adapt_range)//ï¿½Þ·ï¿½
+		if (over_cnt * minus_kp > max_adapt_range)//ÏÞ·ù
 			return;
 		shoot.config.target_B_friction_speed -= over_cnt * minus_kp;
 		shoot.config.target_F_friction_speed -= over_cnt * minus_kp;
 	}
  
-	else if (shoot.config.target_bullet_speed - now_speed > less_blind_err) // ï¿½Ù¶ï¿½Ð¡ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½Ù¶ï¿½
+	else if (shoot.config.target_bullet_speed - now_speed > less_blind_err) // ËÙ¶ÈÐ¡ÓÚÄ¿±êËÙ¶È
 	{
 		if (less_cnt * add_kp > max_adapt_range/*||normal_speed_flag==1*/)
 			return;
-		if(less_cnt>=2)//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Úµï¿½ï¿½Ù²ï¿½ï¿½ï¿½ßµï¿½ï¿½ï¿½
+		if(less_cnt>=2)//Êý×éÀïÃæÁ½¸ö¶¼µÍÓÚµ¯ËÙ²ÅÌá¸ßµ¯ËÙ
 		{
 			shoot.config.target_B_friction_speed += less_cnt * add_kp;
 //			shoot->config.target_F_friction_speed += less_cnt * add_kp;
@@ -91,7 +91,7 @@ void Shooting_Fri_Speed_Adapt(void)
 		
 	}
 
-	/*ï¿½ï¿½ï¿½æµ±Ç°ï¿½Ù¶Èµï¿½ï¿½ï¿½ï¿½ï¿½**************************************************/
+	/*±£´æµ±Ç°ËÙ¶Èµ½Êý×é**************************************************/
 	for (uint8_t i = 1; i < SPEED_SAVE_NUM; i++)
 	{
 		last_speed[i] = last_speed[i - 1];

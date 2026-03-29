@@ -1,5 +1,5 @@
 #include "shoot.h"
-//ï¿½Â°ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½->ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½0ï¿½ï¿½1+ï¿½ï¿½ï¿½Ì¸ï¿½Î»ï¿½Ç·ï¿½ï¿½ï¿½ï¿½->ï¿½ï¿½ï¿½Ï°å·¢ï¿½Ó¾ï¿½is_ready->ï¿½Ó¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½enable_shoot->ï¿½ï¿½ï¿½ï¿½ï¿½Ì¶ï¿½ï¿½ï¿½Ö¾Î»1
+//ÏÂ°åÊÕÖ¸Áî+ÈÈÁ¿ÏÞÖÆ->·¢¸øÉÏ°å0»ò1+²¦ÅÌ¸´Î»ÊÇ·ñÍê³É->£¨ÉÏ°å·¢ÊÓ¾õis_ready->ÊÓ¾õ·¢»ØÉÏ°åenable_shoot->£©²¦ÅÌ¶¯±êÖ¾Î»1
 shoot_t shoot=
 {
 	.fric_b_l=&rm_motor[B_L_Fric],
@@ -9,17 +9,17 @@ shoot_t shoot=
 	.work=Shoot_Work,
 	
 	.config.target_bullet_speed=11.7f,	
-	.config.target_B_friction_speed=3040,     //3050//4550,4350,4452ï¿½ï¿½21ï¿½ï¿½16.04ï¿½ï¿½ï¿½ï¿½4320ï¿½ï¿½22ï¿½ï¿½16.2ï¿½ï¿½,4290,4530,3585
+	.config.target_B_friction_speed=3040,     //3050//4550,4350,4452£¨21¶È16.04£©£¬4320£¨22¶È16.2£©,4290,4530,3585
 	
 	.target = 0,
 
 };
 
 
-/*ï¿½ï¿½×ªï¿½ï¿½ï¿½ï¿½*/
+/*¶Â×ª´¦Àí*/
 void Shoot_stuck_deal(shoot_t *shoot)
 {
-	if((my_abs(shoot->fric_b_l->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[B_L_Fric].rx_info->speed)<=20)  //ï¿½ï¿½×ªï¿½Ð¶ï¿½
+	if((my_abs(shoot->fric_b_l->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[B_L_Fric].rx_info->speed)<=20)  //¶Â×ªÅÐ¶Ï
 	 ||(my_abs(shoot->fric_b_r->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[B_R_Fric].rx_info->speed)<=20)
 	 ||(my_abs(shoot->fric_b_up->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[B_UP_Fric].rx_info->speed)<=20))
 	{
@@ -31,22 +31,22 @@ void Shoot_stuck_deal(shoot_t *shoot)
 	}
 }
 
-/*ï¿½ï¿½ï¿½ï¿½pidï¿½ï¿½ï¿½ï¿½*/
+/*·¢Éäpid¼ÆËã*/
 void Shoot_pid_cal(shoot_t *shoot)
 {
 	shoot->fric_b_l->ctrl->speed_ctrl->target=shoot->base_info.fric_info.target_fric_B_L_speed;
 	shoot->fric_b_r->ctrl->speed_ctrl->target=shoot->base_info.fric_info.target_fric_B_R_speed;	
 	shoot->fric_b_up->ctrl->speed_ctrl->target=shoot->base_info.fric_info.target_fric_B_UP_speed;			
-	if((my_abs(rm_motor[B_L_Fric].rx_info->encoder_speed)<=500 &&//ï¿½ï¿½ï¿½Ú·ï¿½ï¿½ä²»ï¿½ï¿½Ä¦ï¿½ï¿½ï¿½ï¿½
+	if((my_abs(rm_motor[B_L_Fric].rx_info->encoder_speed)<=500 &&//²»ÔÚ·¢Éä²»¿ØÄ¦²ÁÂÖ
 		 my_abs(rm_motor[B_R_Fric].rx_info->encoder_speed)<=500 &&
-		 my_abs(rm_motor[B_UP_Fric].rx_info->encoder_speed)<=500 && Board_Rx_Info.flag.bit.is_fric_on == 0 )
-	  || Board_Rx_Info.flag.bit.is_rc_online == 1)
+		 my_abs(rm_motor[B_UP_Fric].rx_info->encoder_speed)<=500 && Board_Rx_Info.is_fric_on == 0 )
+	  || Board_Rx_Info.is_rc_online == 1)
 	{
 		shoot->fric_b_l->tx_info->torque=0;
 		shoot->fric_b_r->tx_info->torque=0;
 		shoot->fric_b_up->tx_info->torque=0;
 	}
-	else//////////////////////////////////////////ï¿½Ú·ï¿½ï¿½ï¿½ï¿½Ä¦ï¿½ï¿½ï¿½ï¿½
+	else//////////////////////////////////////////ÔÚ·¢Éä¿ØÄ¦²ÁÂÖ
 	{
 		rm_motor[B_R_Fric].single_set_speed(&rm_motor[B_R_Fric]);
 		rm_motor[B_L_Fric].single_set_speed(&rm_motor[B_L_Fric]);
@@ -54,11 +54,11 @@ void Shoot_pid_cal(shoot_t *shoot)
 	}
 }
 
-/*ï¿½â²¿ï¿½ï¿½È¡*/
+/*Íâ²¿»ñÈ¡*/
 static uint32_t t;
 void Shoot_extern_get(shoot_t *shoot)
 {
-  shoot->is_on_fric = Board_Rx_Info.flag.bit.is_fric_on;
+  shoot->is_on_fric = Board_Rx_Info.is_fric_on;
 	if(shoot->is_on_fric == 1)
   {
 		shoot->base_info.fric_info.target_fric_B_L_speed = shoot->config.target_B_friction_speed;
@@ -74,16 +74,16 @@ void Shoot_extern_get(shoot_t *shoot)
 	}
 }
 
-/*ï¿½ï¿½ï¿½ß±ï¿½ï¿½ï¿½*/
+/*ÀëÏß±£»¤*/
 void Shoot_offline_detect(shoot_t *shoot)
 {
 	
 }
 
 /**
- * @brief ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö´ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½
+ * @brief ´òµ¯ÃüÁîÖ´ÐÐÊ±¼ä¼ÆËã
  * 
- * @param flag 0ï¿½ï¿½ï¿½ï¿½ï¿½î¿ªÊ¼Ö´ï¿½ï¿½  1ï¿½ï¿½ï¿½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½
+ * @param flag 0£»ÃüÁî¿ªÊ¼Ö´ÐÐ  1£º½ÓÊÕµ½µ¯ËÙ
  */
 void Shooting_Cmd_Excute_Tick_Calculating(uint8_t flag)
 {
@@ -93,28 +93,28 @@ void Shooting_Cmd_Excute_Tick_Calculating(uint8_t flag)
 	static uint8_t reset_cnt_flag = 0;
 	
 	const uint8_t buf_length = 100;
-	if (flag == 0)//ï¿½ï¿½ï¿½î¿ªÊ¼Ö´ï¿½ï¿½
+	if (flag == 0)//ÃüÁî¿ªÊ¼Ö´ÐÐ
 	{
 		cmd_start_tick = HAL_GetTick();
 	}
-	else if (flag == 1)//ï¿½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½
+	else if (flag == 1)//½ÓÊÕµ½µ¯ËÙ
 	{
 		rx_bullet_tick = HAL_GetTick();
 		vision.shooting_cmd_excute_tick = rx_bullet_tick - cmd_start_tick;
 		vision.shooting_cmd_excute_tick_buf[rx_bullet_cnt]=vision.shooting_cmd_excute_tick;
 		#if 1
-		//ï¿½Æ¶ï¿½Ö¸ï¿½ï¿½
+		//ÒÆ¶¯Ö¸Õë
 		rx_bullet_cnt++;
-		//ï¿½Ø¹ï¿½ï¿½ï¿½ï¿½
+		//»Ø¹éÁãµã
 		if(rx_bullet_cnt>=buf_length-1)
 		{
 			rx_bullet_cnt=0;
 			reset_cnt_flag=1;
 		}
-		//ï¿½ï¿½ï¿½ï¿½Æ½ï¿½ï¿½ï¿½ï¿½
+		//¼ÆËãÆ½¾ùÊý
 		float shooting_cmd_excute_tick_sum;
 		
-		if(reset_cnt_flag==1)//ï¿½ï¿½ï¿½ï¿½Øµï¿½Ô­ï¿½ï¿½ï¿½ï¿½ï¿½Ö±ï¿½Ó±ï¿½ï¿½ï¿½
+		if(reset_cnt_flag==1)//Èç¹û»Øµ½Ô­µã¹ý£¬Ö±½Ó±éÀú
 		{
 			
 			for(uint8_t i=0;i<buf_length;i++)
@@ -123,7 +123,7 @@ void Shooting_Cmd_Excute_Tick_Calculating(uint8_t flag)
 			}
 			vision.shooting_cmd_excute_tick_mean=shooting_cmd_excute_tick_sum/buf_length;
 		}
-		else//ï¿½ï¿½ï¿½Ù¸ï¿½ï¿½Í¶ï¿½ï¿½Ù¸ï¿½
+		else//¶àÉÙ¸ö¾Í¶àÉÙ¸ö
 		{
 			for(uint8_t i=0;i<rx_bullet_cnt;i++)
 			{
@@ -136,7 +136,7 @@ void Shooting_Cmd_Excute_Tick_Calculating(uint8_t flag)
 	}
 }
 
-/*ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½*/
+/*·¢Éä°å¼ä¸üÐÂ*/
 //void Shoot_Board_Update(shoot_t *shoot)
 //{
 //	Board_Tx_Info.vision_yaw_tar = vision.EtoV->yaw_offset;
@@ -145,7 +145,7 @@ void Shooting_Cmd_Excute_Tick_Calculating(uint8_t flag)
 //	Board_Tx_Info.launch_timer = shoot->base_info.launch_timer;
 //}
 
-/*ï¿½ï¿½ï¿½ï¿½ï¿½Ü¿ï¿½*/
+/*·¢Éä×Ü¿Ø*/
 void Shoot_Work(shoot_t *shoot)
 {
 	static uint16_t last_shoot_count,shoot_count = 0;

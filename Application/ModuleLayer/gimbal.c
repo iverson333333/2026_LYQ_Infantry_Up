@@ -6,7 +6,7 @@
 
 gimbal_offset_info_t offset_info =
 {
-	.vision_pitch_offset = 0,//ï¿½ï¿½ï¿½ï¿½Æ«ï¿½ï¿½
+	.vision_pitch_offset = 0,//µõÉäÆ«ÖÃ
 	.lob_pitch_gyro_offset = 0,
 };
 
@@ -22,13 +22,13 @@ gimbal_t gimbal =
 	.all_pid_calc=all_pid_calc,
 	.work = Gimbal_Work,
 	.gimbal_reset_state = DEV_RESET_NO,
-	.gimbal_ctrl_mode = 1,//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	.gimbal_ctrl_mode = 1,//ÍÓÂİÒÇ
 	.base_info.init_time=0,
 	.base_info.init_time_max=1000,	
 	.base_info.init_time_max_count=0,	
 };
 
-/*ï¿½ï¿½Ì¨pitchï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç½Ç¶ï¿½ï¿½ï¿½Î»*/
+/*ÔÆÌ¨pitchÖáÍÓÂİÒÇ½Ç¶ÈÏŞÎ»*/
 void Gimbal_Pitch_Gyro_Angle_Limit(gimbal_t *gimbal)
 {
 	float angle = gimbal->base_info.pitch_imu_angle_target;
@@ -43,7 +43,7 @@ void Gimbal_Pitch_Gyro_Angle_Limit(gimbal_t *gimbal)
 	gimbal->base_info.pitch_imu_angle_target = angle;
 }
 
-/*ï¿½ï¿½Ì¨pitchï¿½ï¿½ï¿½Ğµï¿½Ç¶ï¿½ï¿½ï¿½Î»*/
+/*ÔÆÌ¨pitchÖá»úĞµ½Ç¶ÈÏŞÎ»*/
 void Gimbal_Pitch_Mec_Angle_Limit(gimbal_t *gimbal)
 {
 	float angle = gimbal->base_info.pitch_mec_angle_target;
@@ -59,7 +59,7 @@ void Gimbal_Pitch_Mec_Angle_Limit(gimbal_t *gimbal)
 }
 
 
-/*ï¿½ï¿½Ì¨pitchï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½*/
+/*ÔÆÌ¨pitchÖØÁ¦²¹³¥*/
 void Gimbal_Pitch_Gravity_Offset(gimbal_t *gimbal)
 {
 	float pitch_angle=gimbal->base_info.pitch_imu_angle;
@@ -69,35 +69,35 @@ void Gimbal_Pitch_Gravity_Offset(gimbal_t *gimbal)
 	gimbal->gravity_offset_info.gravity_offset_output=output;
 }
 
-/*ï¿½ï¿½Ì¨ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½*/
+/*ÔÆÌ¨ĞÅÏ¢¸üĞÂ*/
 void Gimbal_External_Date_Update(gimbal_t *gimbal)
 {
 	gimbal->base_info.pitch_imu_angle = -imu_sensor.info->base_info.roll+sgn(imu_sensor.info->base_info.roll)*180;
-	gimbal->base_info.pitch_imu_speed = -imu_sensor.info->base_info.ave_rate_roll;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½serviceï¿½ï¿½posture
+	gimbal->base_info.pitch_imu_speed = -imu_sensor.info->base_info.ave_rate_roll;//ºóĞøÔö¼ÓÒ»¸öservice²ãposture
 	
-	gimbal->gimbal_reset_state = Board_Rx_Info.flag.bit.gimbal_state;
-	gimbal->gimbal_ctrl_mode.gimbal_mode = Board_Rx_Info.gimbal_mode;//ï¿½Å»ï¿½ ï¿½Ò¸ï¿½ï¿½Ø·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é²»ï¿½ï¿½ï¿½é£¿
+	gimbal->gimbal_reset_state = Board_Rx_Info.gimbal_state;
+	gimbal->gimbal_ctrl_mode.gimbal_mode = Board_Rx_Info.gimbal_mode;//ÓÅ»¯ ÕÒ¸öµØ·½¸üĞÂ×ÔÃé²»×ÔÃé£¿
 	gimbal->base_info.pitch_mec_angle_target = Board_Rx_Info.pitch_mec_tar;
 	gimbal->base_info.pitch_imu_angle_target = Board_Rx_Info.pitch_imu_tar;
-	/*pitchï¿½ï¿½ï¿½ï¿½ï¿½Ç¶È¸ï¿½ï¿½ï¿½*/
+	/*pitchÖáµç»ú½Ç¶È¸üĞÂ*/
 	gimbal->base_info.pitch_motor_angle =  (float)gimbal->gimbal_p->rx_info->encoder- PITCH_MOTOR_ENCODER_MIDDLE;
 	gimbal->base_info.pitch_motor_angle = motor_half_cycle(gimbal->base_info.pitch_motor_angle, 8192.f);
 	gimbal->base_info.pitch_motor_speed = (float)gimbal->gimbal_p->rx_info->speed;
 
-	/*360ï¿½È±ï¿½×¼ï¿½ï¿½ï¿½Ç¶ï¿½*/
+	/*360¶È±ê×¼»¯½Ç¶È*/
 	gimbal->base_info.pitch_mec_360_angle=gimbal->base_info.pitch_motor_angle/8192.f*360.f;	
 }
 
-/*ï¿½ï¿½Ì¨ï¿½Ô¾ï¿½Ä£Ê½*/
+/*ÔÆÌ¨×Ô¾ÈÄ£Ê½*/
 void Gimbal_Save_Update(gimbal_t *gimbal,uint8_t ctrl_mode)
 {
 	gimbal->base_info.pitch_mec_angle_target = 0;
 }
 
-/*ï¿½ï¿½Ì¨ï¿½ï¿½ï¿½ï¿½Ä£Ê½*/
+/*ÔÆÌ¨µõÉäÄ£Ê½*/
 void Gimbal_Lob_Update(gimbal_t *gimbal,uint8_t ctrl_mode)
 {
-//	//ï¿½ï¿½Ö¾Î»ï¿½ï¿½ï¿½ï¿½
+//	//±êÖ¾Î»ÇåÁã
 //	gimbal->lob_info.lob_init_angle_flag=0;
 //	
 //	if(car.car_ctrl_mode==RC_CTRL_MODE)
@@ -129,13 +129,13 @@ void Gimbal_Lob_Update(gimbal_t *gimbal,uint8_t ctrl_mode)
 	}
 }
 
-/*ï¿½ï¿½Ì¨ï¿½ï¿½Ê¼ï¿½ï¿½*/
+/*ÔÆÌ¨³õÊ¼»¯*/
 void Gimbal_init_action(gimbal_t *gimbal)
 {
 	gimbal->base_info.init_time_max_count++;
 	gimbal->lob_info.lob_init_angle_flag=0;
-	//ï¿½ï¿½ï¿½Ã³ï¿½Ê¼ï¿½ï¿½Ä¿ï¿½ï¿½Öµ
-	if(Board_Rx_Info.flag.bit.is_rc_online == 0)
+	//ÉèÖÃ³õÊ¼»¯Ä¿±êÖµ
+	if(Board_Rx_Info.is_rc_online == 0)
 	{
 		gimbal->base_info.pitch_mec_angle_target = Board_Rx_Info.pitch_mec_tar;
 		gimbal->base_info.pitch_imu_angle_target = Board_Rx_Info.pitch_imu_tar;
@@ -147,7 +147,7 @@ void Gimbal_init_action(gimbal_t *gimbal)
 //	}
 }
 
-/*ï¿½ï¿½Ì¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£Ê½*/
+/*ÔÆÌ¨ÍÓÂİÒÇÄ£Ê½*/
 void Gimbal_Gyro_Update(gimbal_t *gimbal,uint8_t ctrl_mode)
 {	
 	if(Board_Rx_Info.video_open == 1 && vision.status->rx_state == DEV_ONLINE && vision.status->tx_state == DEV_ONLINE
@@ -163,13 +163,13 @@ void Gimbal_Gyro_Update(gimbal_t *gimbal,uint8_t ctrl_mode)
 	gimbal->base_info.pitch_mec_angle_target = gimbal->base_info.pitch_motor_angle;
 }
 
-///*ï¿½ï¿½ï¿½ï¿½*/
+///*×ÔÃé*/
 //void Gimbal_Vision_Update(gimbal_t *gimbal,uint8_t ctrl_mode)
 //{
 //	gimbal->base_info.pitch_imu_angle_target += gimbal->offset_info->vision_pitch_offset;
 //}
 
-/*ï¿½ï¿½Ì¨pitchï¿½ï¿½PIDï¿½ï¿½ï¿½ï¿½*///////////////
+/*ÔÆÌ¨pitchÖáPID¼ÆËã*///////////////
 void Gimbal_Pitch_Pid_Cal(gimbal_t *gimbal)
 {
 	float gyro_meas_in,gyro_meas_out,gyro_target,mec_meas_in,mec_meas_out,mec_target,shoot_offset_current;
@@ -177,21 +177,21 @@ void Gimbal_Pitch_Pid_Cal(gimbal_t *gimbal)
 	switch (gimbal->ptich_pid_mode)
 	{
 	case GYRO_PID:
-		gyro_meas_out = gimbal->base_info.pitch_imu_angle;				//ï¿½â»·
-		gyro_meas_in = gimbal->base_info.pitch_imu_speed;			  //ï¿½Ú»ï¿½
-		gyro_target = gimbal->base_info.pitch_imu_angle_target;  //Ä¿ï¿½ï¿½Öµ
+		gyro_meas_out = gimbal->base_info.pitch_imu_angle;				//Íâ»·
+		gyro_meas_in = gimbal->base_info.pitch_imu_speed;			  //ÄÚ»·
+		gyro_target = gimbal->base_info.pitch_imu_angle_target;  //Ä¿±êÖµ
 		
-//		shoot_offset_current=shoot.shooting_shake_angle.shoot_pitch_offset_current;//ï¿½ï¿½ï¿½ä¶¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+//		shoot_offset_current=shoot.shooting_shake_angle.shoot_pitch_offset_current;//·¢Éä¶¶¶¯²¹³¥µçÁ÷
 
 		gimbal->base_info.output_gimbal_p = feedforward_pid_calc(gimbal->gimbal_p->ctrl->angle_ctrl_outer_gyro,gimbal->gimbal_p->ctrl->angle_ctrl_inner_gyro,gyro_target,gyro_meas_out,gyro_meas_in,-1,0);
 		break;
 
 	case MEC_PID:
-		mec_meas_out = gimbal->base_info.pitch_motor_angle;		        //ï¿½â»·
-		mec_meas_in = gimbal->base_info.pitch_imu_speed;			      //ï¿½Ú»ï¿½  
-		mec_target = gimbal->base_info.pitch_mec_angle_target;				//Ä¿ï¿½ï¿½Öµ 	
+		mec_meas_out = gimbal->base_info.pitch_motor_angle;		        //Íâ»·
+		mec_meas_in = gimbal->base_info.pitch_imu_speed;			      //ÄÚ»·  
+		mec_target = gimbal->base_info.pitch_mec_angle_target;				//Ä¿±êÖµ 	
 	
-//		shoot_offset_current=shoot.shooting_shake_angle.shoot_pitch_offset_current;//ï¿½ï¿½ï¿½ä¶¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½		
+//		shoot_offset_current=shoot.shooting_shake_angle.shoot_pitch_offset_current;//·¢Éä¶¶¶¯²¹³¥µçÁ÷		
 
 		gimbal->base_info.output_gimbal_p = feedforward_pid_calc(gimbal->gimbal_p->ctrl->angle_ctrl_outer,gimbal->gimbal_p->ctrl->angle_ctrl_inner,mec_target,mec_meas_out,mec_meas_in,-1,0);
 		break;
@@ -205,7 +205,7 @@ void Gimbal_Pitch_Pid_Cal(gimbal_t *gimbal)
 	}
 }
 
-///*ï¿½ï¿½Ì¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½*/
+///*ÔÆÌ¨·¢°å¼äĞÅÏ¢¸üĞÂ*/
 //void Gimbal_Board_Update(gimbal_t *gimbal)
 //{
 //	Board_Tx_Info.pitch_imu = gimbal->base_info.pitch_imu_angle;
@@ -215,7 +215,7 @@ void Gimbal_Pitch_Pid_Cal(gimbal_t *gimbal)
 //  Board_Tx_Info.yaw_v = imu_sensor.info->base_info.rate_yaw;
 //}
 
-/*ï¿½ï¿½Ì¨ï¿½Ü¿ï¿½*/
+/*ÔÆÌ¨×Ü¿Ø*/
 void Gimbal_Work(gimbal_t *gimbal)
 {
 	Gimbal_External_Date_Update(gimbal);
@@ -251,19 +251,19 @@ void Gimbal_Work(gimbal_t *gimbal)
   Gimbal_Pitch_Gyro_Angle_Limit(gimbal);
 	Gimbal_Pitch_Mec_Angle_Limit(gimbal);
 
-	if(Board_Rx_Info.flag.bit.is_rc_online == 0)//ï¿½ï¿½ï¿½ï¿½
+	if(Board_Rx_Info.is_rc_online == 0)//¿ª¿Ø
 	{
 		Gimbal_Pitch_Gravity_Offset(gimbal);
 		Gimbal_Pitch_Pid_Cal(gimbal);
 		gimbal->gimbal_p->tx_info->torque=gimbal->base_info.output_gimbal_p;			
 	}
-	else//ï¿½Ø¿ï¿½
+	else//¹Ø¿Ø
 	{
 		gimbal->gimbal_reset_state = DEV_RESET_NO;
 		gimbal->gimbal_p->tx_info->torque=0;
 	}
 	#else
-	/*ï¿½ï¿½ï¿½ï¿½*/
+	/*µ÷ÊÔ*/
 	gimbal->ptich_pid_mode = GYRO_PID;
 	Gimbal_Pitch_Pid_Cal(gimbal);
 	gimbal->gimbal_p->tx_info->torque=gimbal->base_info.output_gimbal_p;
