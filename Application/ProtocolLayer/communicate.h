@@ -9,253 +9,102 @@
 #include "judge_protocol.h"
 #include "gimbal.h"
 #include "rp_math.h"
-#ifdef UART_COMMUNICATE
 
-extern UART_HandleTypeDef huart3;
-
-//#define POWER_HEAT_DATA_RX_ID        (0x100)//power_heat_data·¢ËÍID
-//#define GAME_ROBOT_STATUS_RX_ID      (0x101)//game_robot_status·¢ËÍID
-//#define SHOOT_DATA_RX_ID             (0x102)//shoot_data·¢ËÍID
-//#define GAME_ROBOT_POS_RX_ID    	 (0x103)//game_robot_pos·¢ËÍID
-//#define CHASSIS_DATA_TX_ID           (0X250)
-//#define CAR_DATA_TX_ID               (0X104)
-//#define COMMUNICATE_OFFLINE_CNT_MAX  (200)//ÀëÏß×î´ó¼ÆÊı(ms)
-
-
-//ÉÏ°å¸øÏÂ°å·¢ËÍµÄ½á¹¹Ìå
+// ä¸Šæ¿ç»™ä¸‹æ¿å‘é€çš„ç»“æ„ä½“ (Up Tx = Down Rx)
 typedef struct
 {
-  uint8_t SOF; // Ö¡Í·£¬Êı¾İÖ¡µÄÆğÊ¼±êÖ¾
-  uint8_t CRC8; // Ñ­»·ÈßÓàĞ£Ñé£¬ÓÃÓÚĞ£ÑéÖ¡Í·²¿·ÖµÄÊı¾İÍêÕûĞÔ
+    float yaw_imu_angle;       // yawé™€èºä»ªè§’åº¦
+    float yaw_imu_speed;       // yawé™€èºä»ªè§’é€Ÿåº¦
+    float pitch_imu_angle;     // pitché™€èºä»ªè§’åº¦
+    float pitch_imu_speed;     // pitché™€èºä»ªè§’é€Ÿåº¦
+    float vision_target_yaw;   // è§†è§‰å‘è¿‡æ¥çš„yaw
+    float vision_target_pitch; // è§†è§‰å‘è¿‡æ¥çš„pitch
+    float pitch_mec_angle;     // pitchæœºæ¢°è§’åº¦
 
-	/*gimbal¸üĞÂ*/
-	float pitch_imu;
-	float yaw_imu;
-	float yaw_v;
-	float pitch_v;
-	float pitch_mec;//?
-	
-	/*ÊÓ¾õĞÅÏ¢,·¢Éä¸üĞÂ*/
-	uint8_t vision_state;
-	bool hit_enable;
-	bool is_find_Target;
-	bool is_find_outpost;
-	bool is_find_base;
-	uint16_t launch_timer;//·¢ÉäÖ÷¶¯µÈ´ıÊ±¼ä
-	float vision_pitch_tar;
-	float vision_yaw_tar;
-	
-  uint16_t CRC16; // Ñ­»·ÈßÓàĞ£Ñé£¬ÓÃÓÚĞ£ÑéÕû¸öÊı¾İÖ¡µÄÍêÕûĞÔ
-}Board_Tx_Info_t;
+    __packed union
+    {
+        uint32_t realtime_flag;
+        __packed struct
+        {
+            uint8_t pitch_motor_online : 1; // pitchåœ¨çº¿
+            uint8_t L_fric_online : 1;      // å·¦æ‘©æ“¦è½®åœ¨çº¿
+            uint8_t R_fric_online : 1;      // å³æ‘©æ“¦è½®åœ¨çº¿
+            uint8_t is_find_target : 1;     // æ‰¾åˆ°äººäº†
+            uint8_t hit_enable : 1;         // å¼€ç«ç”µå¹³
+            uint8_t is_keep_shoot : 1;      // å•å‘è¿˜æ˜¯è¿å‘
+            uint8_t is_vision_online : 1;   // è§†è§‰æ˜¯å¦åœ¨çº¿
+        } flag;
+    };
+} Board_Tx_Info_t;
 
-//ÏÂ°å¸øÉÏ°å·¢ËÍµÄ½á¹¹Ìå
+// ä¸‹æ¿ç»™ä¸Šæ¿å‘é€çš„ç»“æ„ä½“ (Up Rx = Down Tx)
 typedef struct
 {
-  uint8_t SOF; // Ö¡Í·£¬Êı¾İÖ¡µÄÆğÊ¼±êÖ¾
-  uint8_t CRC8; // Ñ­»·ÈßÓàĞ£Ñé£¬ÓÃÓÚĞ£ÑéÖ¡Í·²¿·ÖµÄÊı¾İÍêÕûĞÔ
-	
-	float pitch_imu_tar;
-	float yaw_imu_tar;
-	float pitch_mec_tar;//?
-	
-	bool gimbal_state;
-	int8_t gimbal_mode;
-	
-	bool is_ready_shoot;//²¦ÅÌ¸´Î»
-	bool is_on_lob;//µõ
-	bool is_handle_shoot;//ÊÇ·ñ²Ù×÷ÊÖÊÖ´ò
-	
-	bool is_fric_on;
-	uint8_t bullet_speed;
+    float pitch_imu_tar;
+    float yaw_mec_imu;
+    float pitch_mec_tar;
+    float bullet_speed;
+    float v_x;
+    float v_y;
+    float fric_target_speed;
+    float pitch_output;
 
-	/*ÊÓ¾õĞÅÏ¢*/
-	uint8_t my_color;
-	uint8_t video_open;
-	uint8_t vision_mode;
-	uint8_t blood_0;
-	uint8_t blood_1;
-	uint8_t blood_2;
-	uint8_t blood_3;
-	uint8_t blood_4;
-	uint8_t blood_5;
-	uint8_t blood_6;
-	uint8_t blood_7;
-	float v_x;
-	float v_y;
-  uint16_t CRC16; // Ñ­»·ÈßÓàĞ£Ñé£¬ÓÃÓÚĞ£ÑéÕû¸öÊı¾İÖ¡µÄÍêÕûĞÔ
-}Board_Rx_Info_t;
+    uint8_t shoot_count;
+    uint8_t my_color;
+    uint8_t video_open;
+    uint8_t vision_mode;
+    int8_t gimbal_mode;
+    uint8_t blood_0;
+    uint8_t blood_1;
+    uint8_t blood_2;
+    uint8_t blood_3;
+    uint8_t blood_4;
+    uint8_t blood_5;
+    uint8_t blood_6;
+    uint8_t blood_7;
+
+    __packed union
+    {
+        uint32_t realtime_flag;
+        __packed struct
+        {
+            uint8_t our_color_flag : 1; // my_color
+            uint8_t is_rc_online : 1;
+            uint8_t is_ready_shoot : 1;
+            uint8_t is_game_in_progress : 1;
+            uint8_t is_energy_engine_mode : 1;
+            uint8_t gimbal_state : 1;
+            uint8_t is_on_lob : 1;
+            uint8_t is_handle_shoot : 1;
+            uint8_t is_fric_on : 1;
+        } bit;
+    } flag;
+} Board_Rx_Info_t;
 
 typedef struct
 {
-	dev_work_state_t status;						//½ÓÊÜ×´Ì¬
-	uint32_t send_time;                   //·¢ËÍ¼ä¸ô
-	uint32_t rx_tick;						//½ÓÊÜµ½ĞÅÏ¢Ê±µÄÊ±¼ä
-	uint8_t offline_cnt;									//½ÓÊÜÀëÏß¼ÆÊı
-	uint8_t offline_cnt_max;							//½ÓÊÜÀëÏß×î´ó¼ÆÊı
-}Board_HeartBeat_t;
-
-
-extern Board_Tx_Info_t Board_Tx_Info;
-extern Board_Rx_Info_t Board_Rx_Info;
-extern Board_HeartBeat_t Board_HeartBeat;
-
-bool Board_Tx_Send_Data(void);
-bool Board_C_Recieve_Data(uint8_t *rxBuf);
-void C_Board_HeartBeat(void);
-
-#else
-
-typedef struct
-{
-	/*gimbal¸üĞÂ*/
-	float pitch_imu;//**
-	float yaw_imu;//**
-	float yaw_v;//**
-	float pitch_v;
-	float pitch_mec;//?//**
-	
-	/*ÊÓ¾õĞÅÏ¢,·¢Éä¸üĞÂ*/
-	uint8_t vision_state;//**
-	bool hit_enable;
-	bool is_find_Target;
-	bool is_find_outpost;
-	bool is_find_base;
-	uint16_t launch_timer;//·¢ÉäÖ÷¶¯µÈ´ıÊ±¼ä//**
-	float vision_pitch_tar;//**
-	float vision_yaw_tar;//**
-	
-}Board_Tx_Info_t;
-
-//ÏÂ°å¸øÉÏ°å·¢ËÍµÄ½á¹¹Ìå
-typedef struct
-{
-	bool is_rc_online;
-
-	float pitch_imu_tar;//**
-	float yaw_mec_imu;//_tar;//*******
-	float pitch_mec_tar;//?//**
-	int8_t gimbal_mode;//**
-	
-	bool gimbal_state;//**
-	bool is_ready_shoot;//²¦ÅÌ¸´Î»//**
-	bool is_on_lob;//µõ//**
-	bool is_handle_shoot;//ÊÇ·ñ²Ù×÷ÊÖÊÖ´ò//**
-	
-	bool is_fric_on;//**
-	
-	float bullet_speed;//**
-  uint8_t shoot_count;
-	/*ÊÓ¾õĞÅÏ¢*/
-	uint8_t my_color;//**
-	uint8_t video_open;//**
-	uint8_t vision_mode;//**¹Ø£¬¿ª£¬µõ£¬ÆäËû
-	uint8_t blood_0;//**
-	uint8_t blood_1;//**
-	uint8_t blood_2;//**
-	uint8_t blood_3;//**
-	uint8_t blood_4;//**
-	uint8_t blood_5;//**
-	uint8_t blood_6;//**
-	uint8_t blood_7;//**
-	float v_x;//**
-	float v_y;//**
-}Board_Rx_Info_t;
-
-typedef struct
-{
-	dev_work_state_t status;						//½ÓÊÜ×´Ì¬
-	uint32_t send_time;                   //·¢ËÍ¼ä¸ô
-	uint32_t rx_tick;						//½ÓÊÜµ½ĞÅÏ¢Ê±µÄÊ±¼ä
-	uint8_t offline_cnt;									//½ÓÊÜÀëÏß¼ÆÊı
-	uint8_t offline_cnt_max;							//½ÓÊÜÀëÏß×î´ó¼ÆÊı
-}Board_HeartBeat_t;
+    dev_work_state_t status;    // æ¥å—çŠ¶æ€
+    uint32_t send_time;         // å‘é€é—´éš”
+    uint32_t rx_tick;           // æ¥å—åˆ°ä¿¡æ¯æ—¶çš„æ—¶é—´
+    uint8_t offline_cnt_pack_1; // æ¥å—ç¦»çº¿è®¡æ•°
+    uint8_t offline_cnt_pack_2;
+    uint8_t offline_cnt_max; // æ¥å—ç¦»çº¿æœ€å¤§è®¡æ•°
+} Board_HeartBeat_t;
 
 void Board_Tx_Update(Board_Tx_Info_t *Board_Tx_Info);
 extern Board_Tx_Info_t Board_Tx_Info;
 extern Board_Rx_Info_t Board_Rx_Info;
 extern Board_HeartBeat_t Board_HeartBeat;
-extern CAN_HandleTypeDef  hcan2;
+
+void Board_Tx_D1(void);
+void Board_Tx_D2(void);
+void Board_Tx_D3(void);
+void Board_Tx_D4(void);
+void Board_Rx_D1(uint8_t *rxbuf);
+void Board_Rx_D2(uint8_t *rxbuf);
 
 
-void Board_Tx_C1(void);
-void Board_Tx_C2(void);
-void Board_Tx_C3(void);
-void Board_Rx_C1(uint8_t *rxbuf);
-void Board_Rx_C2(uint8_t *rxBuf);
-void Board_Rx_C3(uint8_t *rxBuf);
-void Board_Rx_C4(uint8_t *rxBuf);
-
+void Send_To_Down_Board(void);
 void C_Board_HeartBeat(void);
-
-#endif
-
-////////////////test///////////×Ô¼º¼ÓÉÏµÄ
-////ÉÏ°å¸øÏÂ°å·¢ËÍµÄ½á¹¹Ìå
-//typedef struct
-//{
-//  uint8_t SOF; // Ö¡Í·£¬Êı¾İÖ¡µÄÆğÊ¼±êÖ¾
-//  uint8_t CRC8; // Ñ­»·ÈßÓàĞ£Ñé£¬ÓÃÓÚĞ£ÑéÖ¡Í·²¿·ÖµÄÊı¾İÍêÕûĞÔ
-
-//	/*gimbal¸üĞÂ*/
-//	float pitch_imu;
-//	float yaw_imu;
-//	float yaw_v;
-//	float pitch_v;
-//	float pitch_mec;//?
-//	
-//	/*ÊÓ¾õĞÅÏ¢,·¢Éä¸üĞÂ*/
-//	uint8_t vision_state;
-//	bool hit_enable;
-//	bool is_find_Target;
-//	bool is_find_outpost;
-//	bool is_find_base;
-//	uint16_t launch_timer;//·¢ÉäÖ÷¶¯µÈ´ıÊ±¼ä
-//	float vision_pitch_tar;
-//	float vision_yaw_tar;
-//	
-//  uint16_t CRC16; // Ñ­»·ÈßÓàĞ£Ñé£¬ÓÃÓÚĞ£ÑéÕû¸öÊı¾İÖ¡µÄÍêÕûĞÔ
-//}Board_Tx_Info_t;
-
-////ÏÂ°å¸øÉÏ°å·¢ËÍµÄ½á¹¹Ìå
-//typedef struct
-//{
-//  uint8_t SOF; // Ö¡Í·£¬Êı¾İÖ¡µÄÆğÊ¼±êÖ¾
-//  uint8_t CRC8; // Ñ­»·ÈßÓàĞ£Ñé£¬ÓÃÓÚĞ£ÑéÖ¡Í·²¿·ÖµÄÊı¾İÍêÕûĞÔ
-//	
-//	float pitch_imu_tar;
-//	float yaw_imu_tar;
-//	float pitch_mec_tar;//?
-//	
-//	bool gimbal_state;
-//	int8_t gimbal_mode;
-//	
-//	bool is_ready_shoot;//²¦ÅÌ¸´Î»
-//	bool is_on_lob;//µõ
-//	bool is_handle_shoot;//ÊÇ·ñ²Ù×÷ÊÖÊÖ´ò
-//	
-//	bool is_fric_on;
-//	uint8_t bullet_speed;
-
-//	/*ÊÓ¾õĞÅÏ¢*/
-//	uint8_t my_color;
-//	uint8_t video_open;
-//	uint8_t vision_mode;
-//	uint8_t blood_0;
-//	uint8_t blood_1;
-//	uint8_t blood_2;
-//	uint8_t blood_3;
-//	uint8_t blood_4;
-//	uint8_t blood_5;
-//	uint8_t blood_6;
-//	uint8_t blood_7;
-//	float v_x;
-//	float v_y;
-//  uint16_t CRC16; // Ñ­»·ÈßÓàĞ£Ñé£¬ÓÃÓÚĞ£ÑéÕû¸öÊı¾İÖ¡µÄÍêÕûĞÔ
-//}Board_Rx_Info_t;
-
-//extern Board_Tx_Info_t Board_Tx_Info;
-//extern Board_Rx_Info_t Board_Rx_Info;
-//bool Board_Tx_Send_Data(void);
-//bool Board_C_Recieve_Data(uint8_t *rxBuf);
 
 #endif
