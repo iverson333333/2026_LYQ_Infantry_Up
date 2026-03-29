@@ -40,43 +40,19 @@ typedef struct
 // 下板给上板发送的结构体 (Up Rx = Down Tx)
 typedef struct
 {
-    float pitch_imu_tar;
-    float yaw_mec_imu;
-    float pitch_mec_tar;
-    float bullet_speed;
-    float v_x;
-    float v_y;
     float fric_target_speed;
     float pitch_output;
-
-    uint8_t shoot_count;
-    uint8_t my_color;
-    uint8_t video_open;
-    uint8_t vision_mode;
-    int8_t gimbal_mode;
-    uint8_t blood_0;
-    uint8_t blood_1;
-    uint8_t blood_2;
-    uint8_t blood_3;
-    uint8_t blood_4;
-    uint8_t blood_5;
-    uint8_t blood_6;
-    uint8_t blood_7;
 
     __packed union
     {
         uint32_t realtime_flag;
         __packed struct
         {
-            uint8_t our_color_flag : 1; // my_color
+            uint8_t our_color_flag : 1;
             uint8_t is_rc_online : 1;
             uint8_t is_ready_shoot : 1;
             uint8_t is_game_in_progress : 1;
             uint8_t is_energy_engine_mode : 1;
-            uint8_t gimbal_state : 1;
-            uint8_t is_on_lob : 1;
-            uint8_t is_handle_shoot : 1;
-            uint8_t is_fric_on : 1;
         } bit;
     } flag;
 } Board_Rx_Info_t;
@@ -102,7 +78,6 @@ void Board_Tx_D3(void);
 void Board_Tx_D4(void);
 void Board_Rx_D1(uint8_t *rxbuf);
 void Board_Rx_D2(uint8_t *rxbuf);
-
 
 void Send_To_Down_Board(void);
 void C_Board_HeartBeat(void);

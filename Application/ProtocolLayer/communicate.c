@@ -53,9 +53,9 @@ void Board_Tx_Update(Board_Tx_Info_t *Board_Tx_Info)
     Board_Tx_Info->vision_target_pitch = vision.VtoE->pitch;
     Board_Tx_Info->pitch_mec_angle = gimbal.base_info.pitch_motor_angle;
 
-    Board_Tx_Info->flag.pitch_motor_online = (rm_motor[gim_pitch].state->status == DEV_ONLINE) ? 1 : 0;
-    Board_Tx_Info->flag.L_fric_online = (rm_motor[B_L_Fric].state->status == DEV_ONLINE) ? 1 : 0;
-    Board_Tx_Info->flag.R_fric_online = (rm_motor[B_R_Fric].state->status == DEV_ONLINE) ? 1 : 0;
+    Board_Tx_Info->flag.pitch_motor_online = (Pitch_Motor.state->status == DEV_ONLINE) ? 1 : 0;
+    Board_Tx_Info->flag.L_fric_online = (rm_motor[L_Fric].state->status == DEV_ONLINE) ? 1 : 0;
+    Board_Tx_Info->flag.R_fric_online = (rm_motor[R_Fric].state->status == DEV_ONLINE) ? 1 : 0;
     Board_Tx_Info->flag.is_find_target = vision.VtoE->flag_union.bit.is_find_target;
     Board_Tx_Info->flag.hit_enable = vision.VtoE->flag_union.bit.is_enable_shootting;
     Board_Tx_Info->flag.is_keep_shoot = 0;
@@ -64,26 +64,15 @@ void Board_Tx_Update(Board_Tx_Info_t *Board_Tx_Info)
 
 void Board_Rx_D1(uint8_t *rxbuf)
 {
-    memcpy(&Board_Rx_Info.pitch_imu_tar, &rxbuf[0], 4);
-    memcpy(&Board_Rx_Info.pitch_mec_tar, &rxbuf[4], 4);
+    memcpy(&Board_Rx_Info.fric_target_speed, &rxbuf[0], 4);
+    memcpy(&Board_Rx_Info.pitch_output, &rxbuf[4], 4);
     Board_HeartBeat.offline_cnt_pack_1 = 0;
 }
 
 void Board_Rx_D2(uint8_t *rxbuf)
 {
-    memcpy(&Board_Rx_Info.yaw_mec_imu, &rxbuf[0], 4);
-    memcpy(&Board_Rx_Info.bullet_speed, &rxbuf[4], 4);
-    Board_HeartBeat.offline_cnt_pack_2 = 0;
-}
-
-void Board_Rx_D5(uint8_t *rxbuf)
-{
     memcpy(&Board_Rx_Info.flag.realtime_flag, &rxbuf[0], 4);
-    Board_Rx_Info.shoot_count = rxbuf[4];
-    Board_Rx_Info.vision_mode = rxbuf[5];
-    Board_Rx_Info.gimbal_mode = (int8_t)rxbuf[6];
-    Board_Rx_Info.video_open = rxbuf[7];
-    Board_HeartBeat.offline_cnt_pack_1 = 0;
+    Board_HeartBeat.offline_cnt_pack_2 = 0;
 }
 
 void Send_To_Down_Board(void)

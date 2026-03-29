@@ -149,9 +149,9 @@ void Shoot_Work(shoot_t *shoot);
 ////下板收指令+热量限制->发给上板0或1+拨盘复位是否完成->（上板发视觉is_ready->视觉发回上板enable_shoot->）拨盘动标志位1
 //shoot_t shoot=
 //{
-//	.fric_b_l=&rm_motor[B_L_Fric],
-//	.fric_b_r=&rm_motor[B_R_Fric],
-//	.fric_b_up=&rm_motor[B_UP_Fric],
+//	.fric_b_l=&rm_motor[L_Fric],
+//	.fric_b_r=&rm_motor[R_Fric],
+//	.fric_b_up=&rm_motor[UP_Fric],
 //	.dail=&DAIL,
 //	
 //	.base_info.dail_info.pid_mode=double_pid,
@@ -338,9 +338,9 @@ void Shoot_Work(shoot_t *shoot);
 //堵转处理
 //void Shoot_stuck_deal(shoot_t *shoot)
 //{
-//	if(((my_abs(shoot->fric_b_l->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[B_L_Fric].rx_info->speed)<=20)  //堵转判断
-//	 ||(my_abs(shoot->fric_b_r->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[B_R_Fric].rx_info->speed)<=20)
-//	 ||(my_abs(shoot->fric_b_up->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[B_UP_Fric].rx_info->speed)<=20)
+//	if(((my_abs(shoot->fric_b_l->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[L_Fric].rx_info->speed)<=20)  //堵转判断
+//	 ||(my_abs(shoot->fric_b_r->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[R_Fric].rx_info->speed)<=20)
+//	 ||(my_abs(shoot->fric_b_up->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[UP_Fric].rx_info->speed)<=20)
 //	 ||(my_abs(shoot->dail->ctrl->position_inn->measure)<=15 && shoot->dail->ctrl->position_inn->out>=12000))
 //	 && shoot->shoot_status!=off_fire && shoot->base_info.dail_info.stuck_flag==0)
 //	{
@@ -360,9 +360,9 @@ void Shoot_Work(shoot_t *shoot);
 //	shoot->fric_b_l->ctrl->speed_ctrl->target=shoot->base_info.fric_info.target_fric_B_L_speed;
 //	shoot->fric_b_r->ctrl->speed_ctrl->target=shoot->base_info.fric_info.target_fric_B_R_speed;	
 //	shoot->fric_b_up->ctrl->speed_ctrl->target=shoot->base_info.fric_info.target_fric_B_UP_speed;			
-//	if(my_abs(rm_motor[B_L_Fric].rx_info->encoder_speed)<=500 &&//不在发射不控摩擦轮
-//		 my_abs(rm_motor[B_R_Fric].rx_info->encoder_speed)<=500 &&
-//		 my_abs(rm_motor[B_UP_Fric].rx_info->encoder_speed)<=500 &&
+//	if(my_abs(rm_motor[L_Fric].rx_info->encoder_speed)<=500 &&//不在发射不控摩擦轮
+//		 my_abs(rm_motor[R_Fric].rx_info->encoder_speed)<=500 &&
+//		 my_abs(rm_motor[UP_Fric].rx_info->encoder_speed)<=500 &&
 //     shoot->shoot_status==off_fire)
 //	{
 //		shoot->fric_b_l->tx_info->torque=0;
@@ -371,9 +371,9 @@ void Shoot_Work(shoot_t *shoot);
 //	}
 //	else//////////////////////////////////////////在发射控摩擦轮
 //	{
-//		rm_motor[B_R_Fric].single_set_speed(&rm_motor[B_R_Fric]);
-//		rm_motor[B_L_Fric].single_set_speed(&rm_motor[B_L_Fric]);
-//		rm_motor[B_UP_Fric].single_set_speed(&rm_motor[B_UP_Fric]);
+//		rm_motor[R_Fric].single_set_speed(&rm_motor[R_Fric]);
+//		rm_motor[L_Fric].single_set_speed(&rm_motor[L_Fric]);
+//		rm_motor[UP_Fric].single_set_speed(&rm_motor[UP_Fric]);
 //	}
 //	switch(shoot->base_info.dail_info.pid_mode)//拨盘pid计算
 //	{
@@ -496,9 +496,9 @@ void Shoot_Work(shoot_t *shoot);
 //		else//初始化完了进主程序
 //		{
 //			*堵转*
-//			if(((my_abs(shoot->fric_b_l->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[B_L_Fric].rx_info->speed)<=20)  //堵转判断
-//			 ||(my_abs(shoot->fric_b_r->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[B_R_Fric].rx_info->speed)<=20)
-//			 ||(my_abs(shoot->fric_b_up->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[B_UP_Fric].rx_info->speed)<=20)
+//			if(((my_abs(shoot->fric_b_l->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[L_Fric].rx_info->speed)<=20)  //堵转判断
+//			 ||(my_abs(shoot->fric_b_r->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[R_Fric].rx_info->speed)<=20)
+//			 ||(my_abs(shoot->fric_b_up->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[UP_Fric].rx_info->speed)<=20)
 //			 ||(my_abs(shoot->dail->ctrl->position_inn->measure)<=15 && shoot->dail->ctrl->position_inn->out>=12000))
 //			 && shoot->shoot_status!=off_fire && shoot->base_info.dail_info.stuck_flag==0)
 //			{
@@ -613,9 +613,9 @@ void Shoot_Work(shoot_t *shoot);
 //				}
 //			  else                                                                           
 //				{
-//					if(((my_abs(shoot->fric_b_l->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[B_L_Fric].rx_info->speed)<=20)  //堵转判断///
-//			      ||(my_abs(shoot->fric_b_r->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[B_R_Fric].rx_info->speed)<=20)
-//		     	  ||(my_abs(shoot->fric_b_up->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[B_UP_Fric].rx_info->speed)<=20)
+//					if(((my_abs(shoot->fric_b_l->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[L_Fric].rx_info->speed)<=20)  //堵转判断///
+//			      ||(my_abs(shoot->fric_b_r->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[R_Fric].rx_info->speed)<=20)
+//		     	  ||(my_abs(shoot->fric_b_up->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[UP_Fric].rx_info->speed)<=20)
 //		     	  ||(my_abs(shoot->dail->ctrl->position_inn->measure)<=15 && shoot->dail->ctrl->position_inn->out>=12000))
 //		      	 && shoot->shoot_status!=off_fire && shoot->base_info.dail_info.stuck_flag==0)
 //		     	{

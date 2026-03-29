@@ -119,60 +119,26 @@ void USART1_rxDataHandler(uint8_t *rxBuf) // ºóÐø»»Ö¸Õë
 void Vision_Board_Update(void)
 {
 	vision.EtoV->flag_union.bit.is_ready = Board_Rx_Info.flag.bit.is_ready_shoot;
-	vision.EtoV->flag_union.bit.own_color = Board_Rx_Info.my_color;
+	vision.EtoV->flag_union.bit.own_color = Board_Rx_Info.flag.bit.our_color_flag;
 	//	vision.EtoV->flag_union.bit.game_start = ;
 
-	switch (Board_Rx_Info.vision_mode)
+	if(Board_Rx_Info.flag.bit.is_energy_engine_mode == 1)
 	{
-	case 0:
-		//			vision.EtoV->flag_union.bit.is_com_vision = 0;
-		vision.EtoV->flag_union.bit.outpost_mode = 0;
-		vision.EtoV->flag_union.bit.lob_mode = 0;
-		vision.EtoV->flag_union.bit.engineer_mode = 0;
-		break;
-	case 1:
-		//			vision.EtoV->flag_union.bit.is_com_vision = 1;
-		vision.EtoV->flag_union.bit.outpost_mode = 0;
-		vision.EtoV->flag_union.bit.lob_mode = 0;
-		vision.EtoV->flag_union.bit.engineer_mode = 0;
-		break;
-	case 2:
-		//			vision.EtoV->flag_union.bit.is_com_vision = 0;
-		vision.EtoV->flag_union.bit.outpost_mode = 1;
-		vision.EtoV->flag_union.bit.lob_mode = 0;
-		vision.EtoV->flag_union.bit.engineer_mode = 0;
-		break;
-	case 3:
-		//			vision.EtoV->flag_union.bit.is_com_vision = 0;
-		vision.EtoV->flag_union.bit.outpost_mode = 0;
-		vision.EtoV->flag_union.bit.lob_mode = 1;
-		vision.EtoV->flag_union.bit.engineer_mode = 0;
-		break;
-	case 4:
-		//			vision.EtoV->flag_union.bit.is_com_vision = 0;
-		vision.EtoV->flag_union.bit.outpost_mode = 0;
-		vision.EtoV->flag_union.bit.lob_mode = 0;
-		vision.EtoV->flag_union.bit.engineer_mode = 1;
-		break;
-	default:
-		break;
-	}
-
-	if (gimbal.gimbal_ctrl_mode.gimbal_mode != 1)
-	{
-		vision.EtoV->yaw = Board_Rx_Info.yaw_mec_imu / PI * 180.f;
-		vision.EtoV->pitch = gimbal.base_info.pitch_motor_angle / 4096.f * 180.f; // 360
+		vision.EtoV->flag_union.bit.energy_engine_mode = 1;
 	}
 	else
 	{
-		vision.EtoV->yaw = Board_Rx_Info.yaw_mec_imu; // / PI * 180.f;
-		vision.EtoV->pitch = gimbal.base_info.pitch_imu_angle;
+		vision.EtoV->flag_union.bit.energy_engine_mode = 0;
 	}
-	vision.EtoV->roll = (-imu_sensor.info->base_info.pitch - 0.77);
-	//	vision.EtoV->pitch_offset = gimbal.offset_info->vision_pitch_offset / 180.f /** 4096.f*/;
-	vision.EtoV->pitch_speed = gimbal.base_info.pitch_imu_speed;
+
+
+	vision.EtoV->yaw = Board_Tx_Info.yaw_imu_angle;
+	vision.EtoV->pitch = Board_Tx_Info.pitch_imu_angle; 
+	vision.EtoV->pitch_speed = Board_Tx_Info.pitch_imu_speed;
 	vision.EtoV->yaw_speed = Board_Tx_Info.yaw_imu_speed;
-	//	vision.EtoV->yaw_offset = Board_Rx_Info.yaw_mec_imu / 180.f /* 4096.f*/;
+
+	vision.EtoV->roll = (-imu_sensor.info->base_info.pitch - 0.77);
+	
 }
 
 /**

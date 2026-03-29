@@ -16,17 +16,18 @@
 /* Exported macro ------------------------------------------------------------*/
 
 /*选择IMU解算算法为Mahony*/
-#define IMU_USE_MAHONY  1
+#define IMU_USE_MAHONY 1
 /*选择IMU解算算法为EKF*/
-#define IMU_USE_EKF 	0
+#define IMU_USE_EKF 0
 /*用串口通信定义*/
-//#define UART_COMMUNICATE
+// #define UART_COMMUNICATE
 
-//#define TEST
+// #define TEST
+
+/* 摩擦轮控制模式: 0=仅L/R, 1=U/L/R */
+#define SHOOT_CTRL_WITH_UP_FRIC 0
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported functions --------------------------------------------------------*/
 
-
 #endif
-

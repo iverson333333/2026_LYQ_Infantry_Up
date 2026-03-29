@@ -29,8 +29,7 @@ typedef struct  __attribute__((packed))
  uint8_t game_start:1 ; // 位1：比赛开始
  uint8_t is_ready:1 ; // 位2：是否允许打弹（热量够 && 复位完毕）
  uint8_t outpost_mode:1  ;// 位3：只锁前哨模式
- uint8_t engineer_mode:1 ;// 位4：只锁工程模式
- uint8_t lob_mode:1  ; // 位5：只吊射模式
+ uint8_t energy_engine_mode:1  ; // 打符模式
 //	 uint8_t is_com_vision:1;  
  uint32_t reserved :26 ; // 位6-31：可扩展
  } bit; // 按位访问的子结构
