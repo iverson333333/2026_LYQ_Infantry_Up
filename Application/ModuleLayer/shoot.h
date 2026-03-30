@@ -1,695 +1,695 @@
-#ifndef __shoot_H_
-#define __shoot_H_
-#include "rp_device_config.h"
-//#include "RM_motor.h"
-#include "DM_motor.h"
-#include "motor.h"
-#include "communicate.h"
-#include "vision_protocol.h"
-#include "judge.h"
-#include "judge_protocol.h"
-
-#define DAIL_ONESHOT_ANGLE    (31481) //²¦ÅÌ½Ç¶È»·µ¥·¢Ò»·¢Òª×ßµÄ½Ç¶È£¨Õı£©
-#define DAIL_INIT_ANGLE (10000)  //2|?¨¬3?¨º??¡¥213£¤???¨¨
-#define DAIL_REVERT_PISITION (-31481)  //²¦ÅÌ·´×ªÒª×ßµÄ½Ç¶È£¨·´×ªÎª¸º)
-
-/*·¢Éä×ÜÄ£Ê½*/
-typedef enum {
-	off_fire,
-	ready_fire,
-	single_fire,
-	running_fire,
-	init_fire,
-}shoot_status_e;
-
-/*·¢Éä×´Ì¬*/
-typedef enum{
-	record_zero,
-	record_short,
-	record_long,
-}record_status_e;
-
-/*²¦ÅÌpid¿ØÖÆÄ£Ê½*/
-typedef enum{
-	single_pid,
-	double_pid,
-}pid_mode_e;
-
-typedef struct __attribute__((packed)) 
-{
-	uint8_t null;
-	uint8_t find_Target;
-	uint8_t find_outpost;
-	uint8_t find_base;
-}hit_target_e;
-
-/*·¢ÉäÏû¶¶°ü*/
-typedef struct __attribute__((packed)) 
-{
-	float yaw_shake_angle ;		//yaw¶¶¶¯½Ç¶È
-	float pitch_shake_angle;	//pitch¶¶¶¯½Ç¶È
-	float const_offset_current; //Ç°À¡³£Êı²¹³¥µçÁ÷
-	float shoot_pitch_offset_current;//Êµ¼ÊÊä³ö²¹³¥µçÁ÷
-	float pitch_a;				//pitchµç»ú½Ç¼ÓËÙ¶È£¬ÓÃÀ´¼ÆËã²¹³¥µçÁ÷
-	float kd;					//·¢ÉäÊ±pitchµç»úpidµÄkdÏµÊı
-	uint16_t feedforward_delay_time;//ms
-	uint16_t feedforward_continue_time;//ms
-	uint8_t feedforward_current_flag;
-}shooting_shake_angle_t;
-
-/*²¦ÅÌ°ü*/
-typedef struct __attribute__((packed)){
-	float        	  target_speed;     //²¦ÅÌÄ¿±êËÙ¶È
-	int32_t      	  target_angle_sum;  //²¦ÅÌÄ¿±êÎ»ÖÃ
-	int16_t         now_encoder;       //µ±Ç°Î»ÖÃ
-	pid_mode_e pid_mode;
-	bool	  stuck_flag;//¶Â×ª±êÖ¾
-	bool    reset_flag;//¸´Î»Íê³É±êÖ¾
-	bool    is_dail_reset;//²¦ÅÌÊÇ·ñ¾ÍÎ»
-	uint8_t count;
-	uint8_t count_max;
-	uint16_t init_time;
-	uint16_t running_shoot_time;
-	Dev_Reset_State_e dail_reset_state; //²¦ÅÌ³õÊ¼»¯×´Ì¬
-}dail_info_t;
-
-/*Ä¦²ÁÂÖËÙ¶È*/
-typedef struct __attribute__((packed)){
-	int16_t target_fric_F_UP_speed;   //Ä¿±êµÚ¶ş¼¶ÉÏÄ¦²ÁÂÖËÙ¶È
-	int16_t target_fric_F_L_speed;    //Ä¿±êµÚ¶ş¼¶×óÄ¦²ÁÂÖËÙ¶È
-	int16_t target_fric_F_R_speed;    //Ä¿±êµÚ¶ş¼¶ÓÒÄ¦²ÁÂÖËÙ¶È
-
-	int16_t target_fric_B_UP_speed;   //Ä¿±êµÚÒ»¼¶ÉÏÄ¦²ÁÂÖËÙ¶È
-	int16_t target_fric_B_L_speed;    //Ä¿±êµÚÒ»¼¶×óÄ¦²ÁÂÖËÙ¶È
-	int16_t target_fric_B_R_speed;    //Ä¿±êµÚÒ»¼¶ÓÒÄ¦²ÁÂÖËÙ¶È
-
-}friction_info_t;
-
-/*Ä¦²ÁÂÖÅäÖÃ°ü*/
-typedef struct __attribute__((packed)) 
-{
-	float target_F_friction_speed;      //µÚ¶ş¼¶Ä¦²ÁÂÖÄ¿±êËÙ¶È
-	float target_B_friction_speed;      //µÚÒ»¼¶Ä¦²ÁÂÖÄ¿±êËÙ¶È
-	float target_bullet_speed; 	//Ä¿±êµ¯ËÙ
-}shooting_config_t;
-
-/*·¢Éä»ù´¡ĞÅÏ¢°ü*/
-typedef struct __attribute__((packed)){
-		int16_t    	    output_dail;      
-		int16_t    	    output_fric_f_up;      
-		int16_t    	    output_fric_f_l;    
-		int16_t    	    output_fric_f_r;    
-		int16_t    	    output_fric_b_up;   
-		int16_t    	    output_fric_b_l;     
-		int16_t    	    output_fric_b_r;     
-	
-	uint8_t is_heat_allow;//ÈÈÁ¿ÔÊĞí´òµ¯
-	uint8_t is_enable_shoot;//ÈÈÁ¿ÔÊĞí´òµ¯
-	uint16_t launch_timer;//ÑÓÊ±·¢µ¯
-	
-	dail_info_t dail_info;
-	friction_info_t fric_info;
-}shoot_base_info_t;
-
-typedef struct __attribute__((packed))shooting_struct{
-	Motor_RM_t *fric_f_up;
-	Motor_RM_t *fric_f_l;
-	Motor_RM_t *fric_f_r;
-	Motor_RM_t *fric_b_up;
-	Motor_RM_t *fric_b_l;
-	Motor_RM_t *fric_b_r;
-	Motor_DM_t *dail;
-	
-	uint8_t stuck_count;
-	
-	shoot_status_e shoot_status;
-	record_status_e record_status;
-	shoot_base_info_t base_info;
-	shooting_config_t 		 config;     
-  hit_target_e	        target;
-	
-	bool is_on_fric;
-
-	shooting_shake_angle_t   shooting_shake_angle;
-	
-	void     	    (*work)(struct shooting_struct *shoot);  
-
-}shoot_t;
-
-extern Motor_RM_t rm_motor[RM_MOTOR_LIST];
-extern shoot_t shoot;
-
-void Shoot_Work(shoot_t *shoot);
-
-#endif
-
-
-/*
-//#include "shoot.h"
-////ÏÂ°åÊÕÖ¸Áî+ÈÈÁ¿ÏŞÖÆ->·¢¸øÉÏ°å0»ò1+²¦ÅÌ¸´Î»ÊÇ·ñÍê³É->£¨ÉÏ°å·¢ÊÓ¾õis_ready->ÊÓ¾õ·¢»ØÉÏ°åenable_shoot->£©²¦ÅÌ¶¯±êÖ¾Î»1
-//shoot_t shoot=
-//{
-//	.fric_b_l=&rm_motor[L_Fric],
-//	.fric_b_r=&rm_motor[R_Fric],
-//	.fric_b_up=&rm_motor[UP_Fric],
-//	.dail=&DAIL,
-//	
-//	.base_info.dail_info.pid_mode=double_pid,
-//	
-//	.base_info.dail_info.dail_reset_state=DEV_RESET_OK,
-//	.base_info.dail_info.init_time= 0 ,
-//	.base_info.dail_info.count= 0 ,
-//	.base_info.dail_info.count_max = 100,
-//	.base_info.dail_info.stuck_flag = 0,
-//	.base_info.dail_info.reset_flag = 0,
-//	.base_info.dail_info.is_dail_reset = 0,
-//	.shoot_status=off_fire,//·¢Éä±êÖ¾Î»
-//	.record_status=record_zero,//µ¥Á¬·¢±êÖ¾Î»
-//	.work=Shoot_Work,
-//	
-//	.config.target_bullet_speed=11.7f,	
-//	.config.target_B_friction_speed=0,     //4550,4350,4452£¨21¶È16.04£©£¬4320£¨22¶È16.2£©,4290,4530,3585
-//	
-//	.target = 0,
-//	
-//			//·¢ÉäÏû¶¶
-//	.shooting_shake_angle.feedforward_delay_time=50,
-//	.shooting_shake_angle.feedforward_continue_time=200,
-//	.shooting_shake_angle.const_offset_current=5000,
-//	.shooting_shake_angle.kd=1,
-//	
-//};
-
-
-//void adapt(void)
-//{
-//////uint8_t flag;
-//////void Shooting_Fri_Speed_Adapt(shoot_t *shoot)
-//////{
-//////	
-///////ÓÃ»§¶¨Òå²ÎÊı**********************************************************
-
-//////#define SPEED_SAVE_NUM 2			  // ËÙ¶È±£´æ¸öÊı
-//////	const float add_kp = 7.f;		  // Ôö¼ÓÔöÒæ
-//////	const float minus_kp = 7.f;		  // ¼õÉÙÔöÒæ
-//////	#if HERO_TYPE==2
-//////	const float over_blind_err = 0.2; // ³¬¹ı¶àÉÙÄÚ²»µ÷Õû
-//////	#else
-//////	const float over_blind_err = 0.2; // ³¬¹ı¶àÉÙÄÚ²»µ÷Õû
-//////	#endif
-//////	
-//////	const float less_blind_err = 0.1; // µÍÓÚ¶àÉÙÄÚ²»µ÷Õû
-//////	const float max_adapt_range = 100; // ×î´óµ¥´Îµ÷ÕûÁ¿
-
-//////	/º¯Êı±äÁ¿**************************************************************
-//////	static uint8_t normal_speed_flag;	
-
-//////	static float last_speed[SPEED_SAVE_NUM] = {0};					  // ±£´æÉÏÒ»·¢ËÙ¶ÈÊı×é
-//////	float now_speed = communicate.shoot_data_rx_info->shooting_speed; // µ±Ç°ËÙ¶È
-
-//////	uint8_t over_cnt = 0, less_cnt = 0;								  // ´óÓÚÄ¿±êËÙ¶È¼ÆÊı£¬Ğ¡ÓÚÄ¿±êËÙ¶È¼ÆÊı
-//////	
-//////   Ö´ĞĞµ¯ËÙµ÷ÕûµÄÌõ¼ş***************************************************
-//////	#if HERO_TYPE==3
-//////		#ifdef Z_CHANGE_FRIC_SPEED
-//////			return ;
-//////		#endif
-//////	#endif
-//////	
-//////	if(communicate.car_data0_tx_info->car_state.bit.is_open_adapt==0)
-//////	{
-//////		
-//////		return ;
-//////	}
-////////#ifndef FriSpeedAdaptEnabled
-////////	return;
-////////#endif
-//////	if (shoot->shoot_status==off_fire)		  // ·¢ÉäÎ´³õÊ¼»¯
-//////		if (shoot->base_info.fric_info.target_fric_B_L_speed == 0) // Ä¦²ÁÂÖÄ¿±êËÙ¶ÈÎª0
-//////				if (my_abs(communicate.shoot_data_rx_info->shooting_speed - shoot->config.target_bullet_speed) > 3) // ÊÕµ½Êı¾İ¹ıÓÚÀëÆ×
-//////				{
-//////					return;
-//////				}
-//////	//³¬µ¯ËÙ£¡£¡£¡´óÁ¿ÏÂ½µ
-//////	if(now_speed>16.5f)
-//////	{
-//////		shoot->config.target_B_friction_speed -= 40;
-////////		shoot->config.target_F_friction_speed -= 40;
-//////		return;
-//////	}
-//////	
-//////	*¼ÆËãÄ¿Ç°´æ´¢Êı×éÀïµ¯ËÙµÄÇé¿ö******************************************
-//////	for (uint8_t i = 0; i < SPEED_SAVE_NUM; i++)
-//////	{
-//////		if (last_speed[i] == 0)
-//////		{
-//////			// Èç¹ûÕÒµ½Ò»¸öÔªËØÎªÁã£¬Ìø³öÑ­»·
-//////			continue;
-//////		}
-//////		else if (last_speed[i] > shoot->config.target_bullet_speed)
-//////		{
-//////			over_cnt++;
-//////		}
-//////		else if (shoot->config.target_bullet_speed > last_speed[i])
-//////		{
-//////			less_cnt++;
-//////		}
-//////	}
-
-//////	*¸ù¾İÇé¿öµ÷ÕûÄ¦²ÁÂÖËÙ¶È***********************************************
-//////	//Ê©ÃÜÌØ´¥·¢Æ÷
-//////	if (now_speed - shoot->config.target_bullet_speed > over_blind_err) // ËÙ¶È´óÓÚÄ¿±êËÙ¶È
-//////	{
-//////		if (over_cnt * minus_kp > max_adapt_range)//ÏŞ·ù
-//////			return;
-//////		shoot->config.target_B_friction_speed -= over_cnt * minus_kp;
-//////		shoot->config.target_F_friction_speed -= over_cnt * minus_kp;
-//////	}
-////// 
-//////	else if (shoot->config.target_bullet_speed - now_speed > less_blind_err) // ËÙ¶ÈĞ¡ÓÚÄ¿±êËÙ¶È
-//////	{
-//////		if (less_cnt * add_kp > max_adapt_range/||normal_speed_flag==1/)
-//////			return;
-//////		if(less_cnt>=2)//Êı×éÀïÃæÁ½¸ö¶¼µÍÓÚµ¯ËÙ²ÅÌá¸ßµ¯ËÙ
-//////		{
-//////			shoot->config.target_B_friction_speed += less_cnt * add_kp;
-////////			shoot->config.target_F_friction_speed += less_cnt * add_kp;
-//////		}
-//////		
-//////	}
-
-//////	*±£´æµ±Ç°ËÙ¶Èµ½Êı×é*********************************************
-//////	for (uint8_t i = 1; i < SPEED_SAVE_NUM; i++)
-//////	{
-//////		last_speed[i] = last_speed[i - 1];
-//////	}
-//////	last_speed[0] = now_speed;
-//////}
-//
-//}
-
-//ÊÖ¶¯²¦ÅÌ¸´Î»
-//void Shoot_dail_reset(shoot_t *shoot)
-//{
-//	shoot->base_info.dail_info.init_time++;
-//	shoot->base_info.dail_info.target_speed=-1500;//·´×ª
-//	shoot->base_info.dail_info.pid_mode=single_pid;
-//		
-//	if(my_abs(shoot->dail->ctrl->position_inn->measure)<=15 && my_abs(shoot->dail->ctrl->position_inn->out)>=2000)//¶Â×ªÅĞ¶Ï
-//	{
-//		shoot->base_info.dail_info.count++;
-//		if(shoot->base_info.dail_info.count>=shoot->base_info.dail_info.count_max)//¶Â×ª´ïµ½Ê±¼ä
-//		{
-//			shoot->base_info.dail_info.dail_reset_state=DEV_RESET_OK;
-//	  	shoot->base_info.dail_info.pid_mode=double_pid;
-//			shoot->dail->rx_info->motor_angle_sum=0;
-//			shoot->base_info.dail_info.target_angle_sum=0;	
-//			shoot->base_info.dail_info.target_angle_sum+=DAIL_INIT_ANGLE;
-//			shoot->base_info.dail_info.count=0;
-//			shoot->base_info.dail_info.running_shoot_time=0;
-//			shoot->record_status=record_zero;	//				shoot->shoot_status=off_fire;
-//		}
-//	}
-//	if(shoot->base_info.dail_info.init_time>=2000)//³õÊ¼»¯³¬Ê±
-//	{
-//		shoot->base_info.dail_info.dail_reset_state=DEV_RESET_OK;
-//		shoot->base_info.dail_info.init_time=0;
-//		shoot->base_info.dail_info.pid_mode=double_pid;
-//		shoot->dail->rx_info->motor_angle_sum=0;
-//		shoot->base_info.dail_info.target_angle_sum=0;	
-//	}
-//}
-//²¦ÅÌµ½Î»¼ì²â
-//void Shoot_dail_usable_judge(shoot_t *shoot)
-//{
-//	static float target;
-//	static float measure;
-//	target = shoot->base_info.dail_info.target_angle_sum;
-//	measure = shoot->dail->rx_info->motor_angle_sum;
-//	if(fabsf(target - measure) <= 0.1f)
-//	{
-//    shoot->base_info.dail_info.reset_flag = 1;
-//	}		
-//	else
-//	{
-//    shoot->base_info.dail_info.reset_flag = 0;
-//	}
-//}
-//¶Â×ª´¦Àí
-//void Shoot_stuck_deal(shoot_t *shoot)
-//{
-//	if(((my_abs(shoot->fric_b_l->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[L_Fric].rx_info->speed)<=20)  //¶Â×ªÅĞ¶Ï
-//	 ||(my_abs(shoot->fric_b_r->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[R_Fric].rx_info->speed)<=20)
-//	 ||(my_abs(shoot->fric_b_up->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[UP_Fric].rx_info->speed)<=20)
-//	 ||(my_abs(shoot->dail->ctrl->position_inn->measure)<=15 && shoot->dail->ctrl->position_inn->out>=12000))
-//	 && shoot->shoot_status!=off_fire && shoot->base_info.dail_info.stuck_flag==0)
-//	{
-//		shoot->stuck_count++;
-//		if(shoot->stuck_count>=100)
-//		{
-//			shoot->base_info.dail_info.target_angle_sum+=DAIL_REVERT_PISITION;
-//			shoot->base_info.dail_info.pid_mode=double_pid;
-//			shoot->record_status=record_zero;
-//		}
-//	}
-//}
-
-//·¢Éäpid¼ÆËã
-//void Shoot_pid_cal(shoot_t *shoot)
-//{
-//	shoot->fric_b_l->ctrl->speed_ctrl->target=shoot->base_info.fric_info.target_fric_B_L_speed;
-//	shoot->fric_b_r->ctrl->speed_ctrl->target=shoot->base_info.fric_info.target_fric_B_R_speed;	
-//	shoot->fric_b_up->ctrl->speed_ctrl->target=shoot->base_info.fric_info.target_fric_B_UP_speed;			
-//	if(my_abs(rm_motor[L_Fric].rx_info->encoder_speed)<=500 &&//²»ÔÚ·¢Éä²»¿ØÄ¦²ÁÂÖ
-//		 my_abs(rm_motor[R_Fric].rx_info->encoder_speed)<=500 &&
-//		 my_abs(rm_motor[UP_Fric].rx_info->encoder_speed)<=500 &&
-//     shoot->shoot_status==off_fire)
-//	{
-//		shoot->fric_b_l->tx_info->torque=0;
-//		shoot->fric_b_r->tx_info->torque=0;
-//		shoot->fric_b_up->tx_info->torque=0;
-//	}
-//	else//////////////////////////////////////////ÔÚ·¢Éä¿ØÄ¦²ÁÂÖ
-//	{
-//		rm_motor[R_Fric].single_set_speed(&rm_motor[R_Fric]);
-//		rm_motor[L_Fric].single_set_speed(&rm_motor[L_Fric]);
-//		rm_motor[UP_Fric].single_set_speed(&rm_motor[UP_Fric]);
-//	}
-//	switch(shoot->base_info.dail_info.pid_mode)//²¦ÅÌpid¼ÆËã
-//	{
-//	  case double_pid:
-//  		if(shoot->shoot_status == off_fire)
-//  		{
-//  			shoot->dail->tx_info->torque=0;
-//  		}
-//  		else
-//  		{
-//  			shoot->dail->ctrl->position_out->target=shoot->base_info.dail_info.target_angle_sum;//µ¥·¢Î»ÖÃ»·
-//  			shoot->dail->ctrl->position_out->measure=DAIL.rx_info->motor_angle_sum;
-//  			DM_Motor_Set_Angle_Position(&DAIL);
-//  		}
-//  	break;
-//  	case single_pid:
-//  		shoot->dail->ctrl->speed_ctrl->target=shoot->base_info.dail_info.target_speed;//Á¬·¢ËÙ¶È»·
-//  		DAIL.single_set_speed(&DAIL);
-//  	break;
-//  	default:  		
-//	  break;  	
-//	}
-//}
-//Íâ²¿»ñÈ¡
-//static uint32_t t;
-//void Shoot_extern_get(shoot_t *shoot)
-//{
-//	shoot->config.target_B_friction_speed = Board_Rx_Info.fric_speed_tar;
-//	shoot->base_info.dail_info.is_dail_reset = Board_Rx_Info.is_dail_reset;
-//	
-//}
-///·¢Éä¿ØÖÆ*
-//void Shoot_ctrl(shoot_t *shoot)
-//{
-//  if(shoot->shoot_status!=off_fire)//Ö»Òª²¦¸ËÔÚÉÏ
-//	{				
-//		shoot->base_info.fric_info.target_fric_B_L_speed=shoot->config.target_B_friction_speed;//Ä¦²ÁÂÖ×ªËÙ4350,4550
-//		shoot->base_info.fric_info.target_fric_B_R_speed=-(shoot->config.target_B_friction_speed);
-//		shoot->base_info.fric_info.target_fric_B_UP_speed=-(shoot->config.target_B_friction_speed);
-//		switch(shoot->shoot_status)//ÅĞ¶Ïµ¥·¢Á¬·¢
-//		{
-//			case single_fire:
-//		   	shoot->base_info.dail_info.target_angle_sum+=DAIL_ONESHOT_ANGLE;
-//				shoot->base_info.dail_info.pid_mode=double_pid;
-//			
-//				shoot->shoot_status=ready_fire;
-//				shoot->record_status=record_zero;
-//			break;
-//		  case running_fire:
-//		 	  if(HAL_GetTick()-t>=800)
-//		   	{
-//		// 	t++;
-//		 	    shoot->base_info.dail_info.target_angle_sum+=DAIL_ONESHOT_ANGLE;
-//				  shoot->base_info.dail_info.pid_mode=double_pid;
-//				  t=HAL_GetTick();
-//			  }	
-//			break;
-//			default:
-//			break;
-//		}
-//	}
-//	
-//}
-
-///ÀëÏß±£»¤*
-//void Shoot_offline_detect(shoot_t *shoot)
-//{
-//	
-//
-///·¢Éä°å¼ä¸üĞÂ*
-//void Shoot_Board_Update(shoot_t *shoot)
-//{
-//	Board_Tx_Info.vision_yaw_tar = vision.rx_info->building_yaw;
-//	Board_Tx_Info.hit_enable = shoot->base_info.is_enable_shoot;
-//  Board_Tx_Info.is_dail_reset = shoot->base_info.dail_info.is_dail_reset;
-//	Board_Tx_Info.is_find_Target = shoot->target.find_Target;
-//	
-//	Board_Tx_Info.launch_timer = shoot->base_info.launch_timer;
-//}
-
-//void Shoot_Work_no(shoot_t *shoot)
-//{
-//	Shoot_dail_usable_judge(shoot);
-//	if(RC_ONLINE)
-//	{
-//		if(shoot->base_info.dail_info.dail_reset_state==DEV_RESET_NO)//ÏÈ³õÊ¼»¯
-//		{
-//			shoot->base_info.dail_info.init_time++;
-//			shoot->base_info.dail_info.target_speed=-1500;//·´×ª
-//			shoot->base_info.dail_info.pid_mode=single_pid;
-//			
-//			if(shoot->base_info.dail_info.init_time>=2000)//³õÊ¼»¯³¬Ê±
-//			{
-//				shoot->base_info.dail_info.dail_reset_state=DEV_RESET_OK;
-//				shoot->base_info.dail_info.init_time=0;
-//				shoot->base_info.dail_info.pid_mode=double_pid;
-//				shoot->dail->rx_info->motor_angle_sum=0;
-//				shoot->base_info.dail_info.target_angle_sum=0;	
-//			}
-//			
-//			if(my_abs(shoot->dail->ctrl->position_inn->measure)<=15 && my_abs(shoot->dail->ctrl->position_inn->out)>=2000)//¶Â×ªÅĞ¶Ï
-//			{
-//				shoot->base_info.dail_info.count++;
-//				if(shoot->base_info.dail_info.count>=shoot->base_info.dail_info.count_max)//¶Â×ª´ïµ½Ê±¼ä
-//				{
-//					shoot->base_info.dail_info.dail_reset_state=DEV_RESET_OK;
-//					shoot->base_info.dail_info.pid_mode=double_pid;
-//					shoot->dail->rx_info->motor_angle_sum=0;
-//					shoot->base_info.dail_info.target_angle_sum=0;	
-//					shoot->base_info.dail_info.target_angle_sum+=DAIL_INIT_ANGLE;
-//					shoot->base_info.dail_info.count=0;
-//					shoot->base_info.dail_info.running_shoot_time=0;
-//					shoot->record_status=record_zero;
-////					shoot->shoot_status=off_fire;
-
-//				}
-//			}
-//		}			
-//	
-//		else//³õÊ¼»¯ÍêÁË½øÖ÷³ÌĞò
-//		{
-//			*¶Â×ª*
-//			if(((my_abs(shoot->fric_b_l->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[L_Fric].rx_info->speed)<=20)  //¶Â×ªÅĞ¶Ï
-//			 ||(my_abs(shoot->fric_b_r->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[R_Fric].rx_info->speed)<=20)
-//			 ||(my_abs(shoot->fric_b_up->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[UP_Fric].rx_info->speed)<=20)
-//			 ||(my_abs(shoot->dail->ctrl->position_inn->measure)<=15 && shoot->dail->ctrl->position_inn->out>=12000))
-//			 && shoot->shoot_status!=off_fire && shoot->base_info.dail_info.stuck_flag==0)
-//			{
-//				shoot->stuck_count++;
-//				if(shoot->stuck_count>=100)
-//				{
-//					shoot->base_info.dail_info.target_angle_sum+=DAIL_REVERT_PISITION;
-//					shoot->base_info.dail_info.pid_mode=double_pid;
-//					shoot->record_status=record_zero;
-//				}
-//			}
-//				
-//				//////////////////////////////²»¶Â×ª///////////////
-//			else
-//			{
-//			 shoot->stuck_count=0;
-//					
-//				if(shoot->shoot_status!=off_fire)//Ö»Òª²¦¸ËÔÚÉÏ
-//				{				
-//					shoot->base_info.fric_info.target_fric_B_L_speed=shoot->config.target_B_friction_speed;//Ä¦²ÁÂÖ×ªËÙ4350,4550
-//					shoot->base_info.fric_info.target_fric_B_R_speed=-(shoot->config.target_B_friction_speed);
-//					shoot->base_info.fric_info.target_fric_B_UP_speed=-(shoot->config.target_B_friction_speed);
-//					
-//					switch(shoot->shoot_status)//ÅĞ¶Ïµ¥·¢Á¬·¢
-//					{
-//						case single_fire:
-//							shoot->base_info.dail_info.target_angle_sum+=DAIL_ONESHOT_ANGLE;
-//							shoot->base_info.dail_info.pid_mode=double_pid;
-//						
-//							shoot->shoot_status=ready_fire;
-//							shoot->record_status=record_zero;
-//						break;
-//						case running_fire:
-//							if(HAL_GetTick()-t>=1000)
-//							{
-//		//						tt++;
-//								shoot->base_info.dail_info.target_angle_sum+=DAIL_ONESHOT_ANGLE;
-//								shoot->base_info.dail_info.pid_mode=double_pid;
-//								t=HAL_GetTick();
-//							}	
-//						break;
-//						default:
-//						break;
-//					}
-//				}
-//				else//²¦¸Ë²»ÔÚÉÏ
-//				{
-//					shoot->base_info.fric_info.target_fric_B_L_speed=0;
-//					shoot->base_info.fric_info.target_fric_B_R_speed=0;
-//					shoot->base_info.fric_info.target_fric_B_UP_speed=0;
-//					shoot->base_info.dail_info.now_encoder=shoot->dail->rx_info->motor_angle;/////////////////////
-//					
-//					shoot->base_info.dail_info.pid_mode=double_pid;
-//					shoot->record_status=record_zero;				
-//			  }
-//		  }
-//	  }
-//	}
-//	else//¹Ø¿Ø
-//	{
-//		shoot->base_info.fric_info.target_fric_B_L_speed=0;
-//		shoot->base_info.fric_info.target_fric_B_R_speed=0;
-//		shoot->base_info.fric_info.target_fric_B_UP_speed=0;
-//		shoot->record_status=record_zero;
-//		shoot->shoot_status=off_fire;
-//		shoot->base_info.dail_info.dail_reset_state=DEV_RESET_NO;
-//    shoot->base_info.dail_info.target_angle_sum=0;
-//	}			
-
-//  Shoot_pid_cal(shoot);
-//	///////////////////////////////////////////////////////////////////////////////////////////////////////////¡¢¡¢¡¢¡¢¡¢¡¢¡¢¡¢¡¢¡¢¡¢¡¢¡¢¡¢¡¢¡¢
-//	
-//	if(RC_ONLINE)
-//	{
-//		if(shoot->fric_b_l->state == DEV_ONLINE && shoot->fric_b_r->state == DEV_ONLINE &&         //µôÏß±£»¤//
-//			shoot->fric_b_up->state == DEV_ONLINE && shoot->dail->state == DEV_ONLINE)
-//		{
-//			if(shoot->shoot_status!=off_fire)
-//			{
-//				if(shoot->base_info.dail_info.dail_reset_state==DEV_RESET_NO)//ÅĞ¶Ï³õÊ¼»¯               //²¦ÅÌ³õÊ¼»¯//
-//				{
-//					shoot->base_info.dail_info.init_time++;
-//					shoot->base_info.dail_info.target_speed=-1500;//·´×ª
-//					shoot->base_info.dail_info.pid_mode=single_pid;
-//					
-//					if(shoot->base_info.dail_info.init_time>=2000)//³õÊ¼»¯³¬Ê±
-//					{
-//						shoot->base_info.dail_info.dail_reset_state=DEV_RESET_OK;
-//						shoot->base_info.dail_info.init_time=0;
-//						shoot->base_info.dail_info.pid_mode=double_pid;
-//						shoot->dail->rx_info->motor_angle_sum=0;
-//						shoot->base_info.dail_info.target_angle_sum=0;	
-//					}
-//					
-//					if(my_abs(shoot->dail->ctrl->position_inn->measure)<=15 && my_abs(shoot->dail->ctrl->position_inn->out)>=2000)//¶Â×ªÅĞ¶Ï
-//					{
-//						shoot->base_info.dail_info.count++;
-//						if(shoot->base_info.dail_info.count>=shoot->base_info.dail_info.count_max)//¶Â×ª´ïµ½Ê±¼ä
-//						{
-//							shoot->base_info.dail_info.dail_reset_state=DEV_RESET_OK;
-//							shoot->base_info.dail_info.pid_mode=double_pid;
-//							shoot->dail->rx_info->motor_angle_sum=0;
-//							shoot->base_info.dail_info.target_angle_sum=0;	
-//							shoot->base_info.dail_info.target_angle_sum+=DAIL_INIT_ANGLE;
-//							shoot->base_info.dail_info.count=0;
-//							shoot->base_info.dail_info.running_shoot_time=0;
-//							shoot->record_status=record_zero;
-//			//				shoot->shoot_status=off_fire;
-
-//						}
-//					}
-//				}
-//			  else                                                                           
-//				{
-//					if(((my_abs(shoot->fric_b_l->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[L_Fric].rx_info->speed)<=20)  //¶Â×ªÅĞ¶Ï///
-//			      ||(my_abs(shoot->fric_b_r->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[R_Fric].rx_info->speed)<=20)
-//		     	  ||(my_abs(shoot->fric_b_up->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[UP_Fric].rx_info->speed)<=20)
-//		     	  ||(my_abs(shoot->dail->ctrl->position_inn->measure)<=15 && shoot->dail->ctrl->position_inn->out>=12000))
-//		      	 && shoot->shoot_status!=off_fire && shoot->base_info.dail_info.stuck_flag==0)
-//		     	{
-//			     	shoot->stuck_count++;
-//		     		if(shoot->stuck_count>=100)
-//		     		{
-//		     			shoot->base_info.dail_info.target_angle_sum+=DAIL_REVERT_PISITION;
-//		     			shoot->base_info.dail_info.pid_mode=double_pid;
-//		     			shoot->record_status=record_zero;
-//		     		}
-//		     	}
-//					else
-//		     	{
-//		     	  shoot->stuck_count=0;                                                                                     //²»¶Â×ª¿Ø///
-//					
-//		     		shoot->base_info.fric_info.target_fric_B_L_speed=shoot->config.target_B_friction_speed;//Ä¦²ÁÂÖ×ªËÙ4350,4550
-//		     		shoot->base_info.fric_info.target_fric_B_R_speed=-(shoot->config.target_B_friction_speed);
-//		     		shoot->base_info.fric_info.target_fric_B_UP_speed=-(shoot->config.target_B_friction_speed);
-//		     			
-//		     		switch(shoot->shoot_status)//ÅĞ¶Ïµ¥·¢Á¬·¢
-//			     	{
-//		     			case single_fire:
-//		     	    	shoot->base_info.dail_info.target_angle_sum+=DAIL_ONESHOT_ANGLE;
-//		     				shoot->base_info.dail_info.pid_mode=double_pid;
-//		     			
-//		     				shoot->shoot_status=ready_fire;
-//		     				shoot->record_status=record_zero;
-//		     			break;
-//		     			case running_fire:
-//		     				if(HAL_GetTick()-t>=1000)
-//		     				{
-//		//			    	tt++;
-//						    	shoot->base_info.dail_info.target_angle_sum+=DAIL_ONESHOT_ANGLE;
-//					    		shoot->base_info.dail_info.pid_mode=double_pid;
-//					    		t=HAL_GetTick();
-//					    	}	
-//				    		break;
-//			     		default:
-//			     		break;
-//			     	}
-//			     	
-//			     
-//		       }     
-//				}
-//					
-//			}
-//			else//²¦¸Ë²»ÔÚÉÏ
-//			{
-//			  shoot->base_info.fric_info.target_fric_B_L_speed=0;
-//			  shoot->base_info.fric_info.target_fric_B_R_speed=0;
-//			  shoot->base_info.fric_info.target_fric_B_UP_speed=0;
-//			  shoot->base_info.dail_info.now_encoder=shoot->dail->rx_info->motor_angle;/////////////////////
-//			     		
-//			  shoot->base_info.dail_info.pid_mode=double_pid;
-//			  shoot->record_status=record_zero;				
-//		  }
-//		}
-//	}
-//	else//¹Ø¿Ø
-//	{
-//		
-//	}
-//}
-
-//void Shoot_Work(shoot_t *shoot)
-//{
-//	Shoot_offline_detect(shoot);
-//	Shoot_dail_usable_judge(shoot);
-//	Shoot_extern_get(shoot);
-//	if(shoot->base_info.dail_info.is_dail_reset == 1)
-//	{
-//		Shoot_dail_reset(shoot);
-//	}
-//	Shoot_ctrl(shoot);
-//	Shoot_pid_cal(shoot);
-//}
+#ifndef __shoot_H_
+#define __shoot_H_
+#include "rp_device_config.h"
+//#include "RM_motor.h"
+#include "DM_motor.h"
+#include "motor.h"
+#include "communicate.h"
+#include "vision_protocol.h"
+#include "judge.h"
+#include "judge_protocol.h"
+
+#define DAIL_ONESHOT_ANGLE    (31481) //æ‹¨ç›˜è§’åº¦ç¯å•å‘ä¸€å‘è¦èµ°çš„è§’åº¦ï¼ˆæ­£ï¼‰
+#define DAIL_INIT_ANGLE (10000)  //2|?Ã¬3?Ãª??Ë‰213ï¿¥???Ã¨
+#define DAIL_REVERT_PISITION (-31481)  //æ‹¨ç›˜åè½¬è¦èµ°çš„è§’åº¦ï¼ˆåè½¬ä¸ºè´Ÿ)
+
+/*å‘å°„æ€»æ¨¡å¼*/
+typedef enum {
+	off_fire,
+	ready_fire,
+	single_fire,
+	running_fire,
+	init_fire,
+}shoot_status_e;
+
+/*å‘å°„çŠ¶æ€*/
+typedef enum{
+	record_zero,
+	record_short,
+	record_long,
+}record_status_e;
+
+/*æ‹¨ç›˜pidæ§åˆ¶æ¨¡å¼*/
+typedef enum{
+	single_pid,
+	double_pid,
+}pid_mode_e;
+
+typedef struct __attribute__((packed)) 
+{
+	uint8_t null;
+	uint8_t find_Target;
+	uint8_t find_outpost;
+	uint8_t find_base;
+}hit_target_e;
+
+/*å‘å°„æ¶ˆæŠ–åŒ…*/
+typedef struct __attribute__((packed)) 
+{
+	float yaw_shake_angle ;		//yawæŠ–åŠ¨è§’åº¦
+	float pitch_shake_angle;	//pitchæŠ–åŠ¨è§’åº¦
+	float const_offset_current; //å‰é¦ˆå¸¸æ•°è¡¥å¿ç”µæµ
+	float shoot_pitch_offset_current;//å®é™…è¾“å‡ºè¡¥å¿ç”µæµ
+	float pitch_a;				//pitchç”µæœºè§’åŠ é€Ÿåº¦ï¼Œç”¨æ¥è®¡ç®—è¡¥å¿ç”µæµ
+	float kd;					//å‘å°„æ—¶pitchç”µæœºpidçš„kdç³»æ•°
+	uint16_t feedforward_delay_time;//ms
+	uint16_t feedforward_continue_time;//ms
+	uint8_t feedforward_current_flag;
+}shooting_shake_angle_t;
+
+/*æ‹¨ç›˜åŒ…*/
+typedef struct __attribute__((packed)){
+	float        	  target_speed;     //æ‹¨ç›˜ç›®æ ‡é€Ÿåº¦
+	int32_t      	  target_angle_sum;  //æ‹¨ç›˜ç›®æ ‡ä½ç½®
+	int16_t         now_encoder;       //å½“å‰ä½ç½®
+	pid_mode_e pid_mode;
+	bool	  stuck_flag;//å µè½¬æ ‡å¿—
+	bool    reset_flag;//å¤ä½å®Œæˆæ ‡å¿—
+	bool    is_dail_reset;//æ‹¨ç›˜æ˜¯å¦å°±ä½
+	uint8_t count;
+	uint8_t count_max;
+	uint16_t init_time;
+	uint16_t running_shoot_time;
+	Dev_Reset_State_e dail_reset_state; //æ‹¨ç›˜åˆå§‹åŒ–çŠ¶æ€
+}dail_info_t;
+
+/*æ‘©æ“¦è½®é€Ÿåº¦*/
+typedef struct __attribute__((packed)){
+	int16_t target_fric_F_UP_speed;   //ç›®æ ‡ç¬¬äºŒçº§ä¸Šæ‘©æ“¦è½®é€Ÿåº¦
+	int16_t target_fric_F_L_speed;    //ç›®æ ‡ç¬¬äºŒçº§å·¦æ‘©æ“¦è½®é€Ÿåº¦
+	int16_t target_fric_F_R_speed;    //ç›®æ ‡ç¬¬äºŒçº§å³æ‘©æ“¦è½®é€Ÿåº¦
+
+	int16_t target_fric_B_UP_speed;   //ç›®æ ‡ç¬¬ä¸€çº§ä¸Šæ‘©æ“¦è½®é€Ÿåº¦
+	int16_t target_fric_B_L_speed;    //ç›®æ ‡ç¬¬ä¸€çº§å·¦æ‘©æ“¦è½®é€Ÿåº¦
+	int16_t target_fric_B_R_speed;    //ç›®æ ‡ç¬¬ä¸€çº§å³æ‘©æ“¦è½®é€Ÿåº¦
+
+}friction_info_t;
+
+/*æ‘©æ“¦è½®é…ç½®åŒ…*/
+typedef struct __attribute__((packed)) 
+{
+	float target_F_friction_speed;      //ç¬¬äºŒçº§æ‘©æ“¦è½®ç›®æ ‡é€Ÿåº¦
+	float target_B_friction_speed;      //ç¬¬ä¸€çº§æ‘©æ“¦è½®ç›®æ ‡é€Ÿåº¦
+	float target_bullet_speed; 	//ç›®æ ‡å¼¹é€Ÿ
+}shooting_config_t;
+
+/*å‘å°„åŸºç¡€ä¿¡æ¯åŒ…*/
+typedef struct __attribute__((packed)){
+		int16_t    	    output_dail;      
+		int16_t    	    output_fric_f_up;      
+		int16_t    	    output_fric_f_l;    
+		int16_t    	    output_fric_f_r;    
+		int16_t    	    output_fric_b_up;   
+		int16_t    	    output_fric_b_l;     
+		int16_t    	    output_fric_b_r;     
+	
+	uint8_t is_heat_allow;//çƒ­é‡å…è®¸æ‰“å¼¹
+	uint8_t is_enable_shoot;//çƒ­é‡å…è®¸æ‰“å¼¹
+	uint16_t launch_timer;//å»¶æ—¶å‘å¼¹
+	
+	dail_info_t dail_info;
+	friction_info_t fric_info;
+}shoot_base_info_t;
+
+typedef struct __attribute__((packed))shooting_struct{
+	Motor_RM_t *fric_f_up;
+	Motor_RM_t *fric_f_l;
+	Motor_RM_t *fric_f_r;
+	Motor_RM_t *fric_b_up;
+	Motor_RM_t *fric_b_l;
+	Motor_RM_t *fric_b_r;
+	Motor_DM_t *dail;
+	
+	uint8_t stuck_count;
+	
+	shoot_status_e shoot_status;
+	record_status_e record_status;
+	shoot_base_info_t base_info;
+	shooting_config_t 		 config;     
+  hit_target_e	        target;
+	
+	bool is_on_fric;
+
+	shooting_shake_angle_t   shooting_shake_angle;
+	
+	void     	    (*work)(struct shooting_struct *shoot);  
+
+}shoot_t;
+
+extern Motor_RM_t rm_motor[RM_MOTOR_LIST];
+extern shoot_t shoot;
+
+void Shoot_Work(shoot_t *shoot);
+
+#endif
+
+
+/*
+//#include "shoot.h"
+////ä¸‹æ¿æ”¶æŒ‡ä»¤+çƒ­é‡é™åˆ¶->å‘ç»™ä¸Šæ¿0æˆ–1+æ‹¨ç›˜å¤ä½æ˜¯å¦å®Œæˆ->ï¼ˆä¸Šæ¿å‘è§†è§‰is_ready->è§†è§‰å‘å›ä¸Šæ¿enable_shoot->ï¼‰æ‹¨ç›˜åŠ¨æ ‡å¿—ä½1
+//shoot_t shoot=
+//{
+//	.fric_b_l=&rm_motor[L_Fric],
+//	.fric_b_r=&rm_motor[R_Fric],
+//	.fric_b_up=&rm_motor[UP_Fric],
+//	.dail=&DAIL,
+//	
+//	.base_info.dail_info.pid_mode=double_pid,
+//	
+//	.base_info.dail_info.dail_reset_state=DEV_RESET_OK,
+//	.base_info.dail_info.init_time= 0 ,
+//	.base_info.dail_info.count= 0 ,
+//	.base_info.dail_info.count_max = 100,
+//	.base_info.dail_info.stuck_flag = 0,
+//	.base_info.dail_info.reset_flag = 0,
+//	.base_info.dail_info.is_dail_reset = 0,
+//	.shoot_status=off_fire,//å‘å°„æ ‡å¿—ä½
+//	.record_status=record_zero,//å•è¿å‘æ ‡å¿—ä½
+//	.work=Shoot_Work,
+//	
+//	.config.target_bullet_speed=11.7f,	
+//	.config.target_B_friction_speed=0,     //4550,4350,4452ï¼ˆ21åº¦16.04ï¼‰ï¼Œ4320ï¼ˆ22åº¦16.2ï¼‰,4290,4530,3585
+//	
+//	.target = 0,
+//	
+//			//å‘å°„æ¶ˆæŠ–
+//	.shooting_shake_angle.feedforward_delay_time=50,
+//	.shooting_shake_angle.feedforward_continue_time=200,
+//	.shooting_shake_angle.const_offset_current=5000,
+//	.shooting_shake_angle.kd=1,
+//	
+//};
+
+
+//void adapt(void)
+//{
+//////uint8_t flag;
+//////void Shooting_Fri_Speed_Adapt(shoot_t *shoot)
+//////{
+//////	
+///////ç”¨æˆ·å®šä¹‰å‚æ•°**********************************************************
+
+//////#define SPEED_SAVE_NUM 2			  // é€Ÿåº¦ä¿å­˜ä¸ªæ•°
+//////	const float add_kp = 7.f;		  // å¢åŠ å¢ç›Š
+//////	const float minus_kp = 7.f;		  // å‡å°‘å¢ç›Š
+//////	#if HERO_TYPE==2
+//////	const float over_blind_err = 0.2; // è¶…è¿‡å¤šå°‘å†…ä¸è°ƒæ•´
+//////	#else
+//////	const float over_blind_err = 0.2; // è¶…è¿‡å¤šå°‘å†…ä¸è°ƒæ•´
+//////	#endif
+//////	
+//////	const float less_blind_err = 0.1; // ä½äºå¤šå°‘å†…ä¸è°ƒæ•´
+//////	const float max_adapt_range = 100; // æœ€å¤§å•æ¬¡è°ƒæ•´é‡
+
+//////	/å‡½æ•°å˜é‡**************************************************************
+//////	static uint8_t normal_speed_flag;	
+
+//////	static float last_speed[SPEED_SAVE_NUM] = {0};					  // ä¿å­˜ä¸Šä¸€å‘é€Ÿåº¦æ•°ç»„
+//////	float now_speed = communicate.shoot_data_rx_info->shooting_speed; // å½“å‰é€Ÿåº¦
+
+//////	uint8_t over_cnt = 0, less_cnt = 0;								  // å¤§äºç›®æ ‡é€Ÿåº¦è®¡æ•°ï¼Œå°äºç›®æ ‡é€Ÿåº¦è®¡æ•°
+//////	
+//////   æ‰§è¡Œå¼¹é€Ÿè°ƒæ•´çš„æ¡ä»¶***************************************************
+//////	#if HERO_TYPE==3
+//////		#ifdef Z_CHANGE_FRIC_SPEED
+//////			return ;
+//////		#endif
+//////	#endif
+//////	
+//////	if(communicate.car_data0_tx_info->car_state.bit.is_open_adapt==0)
+//////	{
+//////		
+//////		return ;
+//////	}
+////////#ifndef FriSpeedAdaptEnabled
+////////	return;
+////////#endif
+//////	if (shoot->shoot_status==off_fire)		  // å‘å°„æœªåˆå§‹åŒ–
+//////		if (shoot->base_info.fric_info.target_fric_B_L_speed == 0) // æ‘©æ“¦è½®ç›®æ ‡é€Ÿåº¦ä¸º0
+//////				if (my_abs(communicate.shoot_data_rx_info->shooting_speed - shoot->config.target_bullet_speed) > 3) // æ”¶åˆ°æ•°æ®è¿‡äºç¦»è°±
+//////				{
+//////					return;
+//////				}
+//////	//è¶…å¼¹é€Ÿï¼ï¼ï¼å¤§é‡ä¸‹é™
+//////	if(now_speed>16.5f)
+//////	{
+//////		shoot->config.target_B_friction_speed -= 40;
+////////		shoot->config.target_F_friction_speed -= 40;
+//////		return;
+//////	}
+//////	
+//////	*è®¡ç®—ç›®å‰å­˜å‚¨æ•°ç»„é‡Œå¼¹é€Ÿçš„æƒ…å†µ******************************************
+//////	for (uint8_t i = 0; i < SPEED_SAVE_NUM; i++)
+//////	{
+//////		if (last_speed[i] == 0)
+//////		{
+//////			// å¦‚æœæ‰¾åˆ°ä¸€ä¸ªå…ƒç´ ä¸ºé›¶ï¼Œè·³å‡ºå¾ªç¯
+//////			continue;
+//////		}
+//////		else if (last_speed[i] > shoot->config.target_bullet_speed)
+//////		{
+//////			over_cnt++;
+//////		}
+//////		else if (shoot->config.target_bullet_speed > last_speed[i])
+//////		{
+//////			less_cnt++;
+//////		}
+//////	}
+
+//////	*æ ¹æ®æƒ…å†µè°ƒæ•´æ‘©æ“¦è½®é€Ÿåº¦***********************************************
+//////	//æ–½å¯†ç‰¹è§¦å‘å™¨
+//////	if (now_speed - shoot->config.target_bullet_speed > over_blind_err) // é€Ÿåº¦å¤§äºç›®æ ‡é€Ÿåº¦
+//////	{
+//////		if (over_cnt * minus_kp > max_adapt_range)//é™å¹…
+//////			return;
+//////		shoot->config.target_B_friction_speed -= over_cnt * minus_kp;
+//////		shoot->config.target_F_friction_speed -= over_cnt * minus_kp;
+//////	}
+////// 
+//////	else if (shoot->config.target_bullet_speed - now_speed > less_blind_err) // é€Ÿåº¦å°äºç›®æ ‡é€Ÿåº¦
+//////	{
+//////		if (less_cnt * add_kp > max_adapt_range/||normal_speed_flag==1/)
+//////			return;
+//////		if(less_cnt>=2)//æ•°ç»„é‡Œé¢ä¸¤ä¸ªéƒ½ä½äºå¼¹é€Ÿæ‰æé«˜å¼¹é€Ÿ
+//////		{
+//////			shoot->config.target_B_friction_speed += less_cnt * add_kp;
+////////			shoot->config.target_F_friction_speed += less_cnt * add_kp;
+//////		}
+//////		
+//////	}
+
+//////	*ä¿å­˜å½“å‰é€Ÿåº¦åˆ°æ•°ç»„*********************************************
+//////	for (uint8_t i = 1; i < SPEED_SAVE_NUM; i++)
+//////	{
+//////		last_speed[i] = last_speed[i - 1];
+//////	}
+//////	last_speed[0] = now_speed;
+//////}
+//
+//}
+
+//æ‰‹åŠ¨æ‹¨ç›˜å¤ä½
+//void Shoot_dail_reset(shoot_t *shoot)
+//{
+//	shoot->base_info.dail_info.init_time++;
+//	shoot->base_info.dail_info.target_speed=-1500;//åè½¬
+//	shoot->base_info.dail_info.pid_mode=single_pid;
+//		
+//	if(my_abs(shoot->dail->ctrl->position_inn->measure)<=15 && my_abs(shoot->dail->ctrl->position_inn->out)>=2000)//å µè½¬åˆ¤æ–­
+//	{
+//		shoot->base_info.dail_info.count++;
+//		if(shoot->base_info.dail_info.count>=shoot->base_info.dail_info.count_max)//å µè½¬è¾¾åˆ°æ—¶é—´
+//		{
+//			shoot->base_info.dail_info.dail_reset_state=DEV_RESET_OK;
+//	  	shoot->base_info.dail_info.pid_mode=double_pid;
+//			shoot->dail->rx_info->motor_angle_sum=0;
+//			shoot->base_info.dail_info.target_angle_sum=0;	
+//			shoot->base_info.dail_info.target_angle_sum+=DAIL_INIT_ANGLE;
+//			shoot->base_info.dail_info.count=0;
+//			shoot->base_info.dail_info.running_shoot_time=0;
+//			shoot->record_status=record_zero;	//				shoot->shoot_status=off_fire;
+//		}
+//	}
+//	if(shoot->base_info.dail_info.init_time>=2000)//åˆå§‹åŒ–è¶…æ—¶
+//	{
+//		shoot->base_info.dail_info.dail_reset_state=DEV_RESET_OK;
+//		shoot->base_info.dail_info.init_time=0;
+//		shoot->base_info.dail_info.pid_mode=double_pid;
+//		shoot->dail->rx_info->motor_angle_sum=0;
+//		shoot->base_info.dail_info.target_angle_sum=0;	
+//	}
+//}
+//æ‹¨ç›˜åˆ°ä½æ£€æµ‹
+//void Shoot_dail_usable_judge(shoot_t *shoot)
+//{
+//	static float target;
+//	static float measure;
+//	target = shoot->base_info.dail_info.target_angle_sum;
+//	measure = shoot->dail->rx_info->motor_angle_sum;
+//	if(fabsf(target - measure) <= 0.1f)
+//	{
+//    shoot->base_info.dail_info.reset_flag = 1;
+//	}		
+//	else
+//	{
+//    shoot->base_info.dail_info.reset_flag = 0;
+//	}
+//}
+//å µè½¬å¤„ç†
+//void Shoot_stuck_deal(shoot_t *shoot)
+//{
+//	if(((my_abs(shoot->fric_b_l->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[L_Fric].rx_info->speed)<=20)  //å µè½¬åˆ¤æ–­
+//	 ||(my_abs(shoot->fric_b_r->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[R_Fric].rx_info->speed)<=20)
+//	 ||(my_abs(shoot->fric_b_up->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[UP_Fric].rx_info->speed)<=20)
+//	 ||(my_abs(shoot->dail->ctrl->position_inn->measure)<=15 && shoot->dail->ctrl->position_inn->out>=12000))
+//	 && shoot->shoot_status!=off_fire && shoot->base_info.dail_info.stuck_flag==0)
+//	{
+//		shoot->stuck_count++;
+//		if(shoot->stuck_count>=100)
+//		{
+//			shoot->base_info.dail_info.target_angle_sum+=DAIL_REVERT_PISITION;
+//			shoot->base_info.dail_info.pid_mode=double_pid;
+//			shoot->record_status=record_zero;
+//		}
+//	}
+//}
+
+//å‘å°„pidè®¡ç®—
+//void Shoot_pid_cal(shoot_t *shoot)
+//{
+//	shoot->fric_b_l->ctrl->speed_ctrl->target=shoot->base_info.fric_info.target_fric_B_L_speed;
+//	shoot->fric_b_r->ctrl->speed_ctrl->target=shoot->base_info.fric_info.target_fric_B_R_speed;	
+//	shoot->fric_b_up->ctrl->speed_ctrl->target=shoot->base_info.fric_info.target_fric_B_UP_speed;			
+//	if(my_abs(rm_motor[L_Fric].rx_info->encoder_speed)<=500 &&//ä¸åœ¨å‘å°„ä¸æ§æ‘©æ“¦è½®
+//		 my_abs(rm_motor[R_Fric].rx_info->encoder_speed)<=500 &&
+//		 my_abs(rm_motor[UP_Fric].rx_info->encoder_speed)<=500 &&
+//     shoot->shoot_status==off_fire)
+//	{
+//		shoot->fric_b_l->tx_info->torque=0;
+//		shoot->fric_b_r->tx_info->torque=0;
+//		shoot->fric_b_up->tx_info->torque=0;
+//	}
+//	else//////////////////////////////////////////åœ¨å‘å°„æ§æ‘©æ“¦è½®
+//	{
+//		rm_motor[R_Fric].single_set_speed(&rm_motor[R_Fric]);
+//		rm_motor[L_Fric].single_set_speed(&rm_motor[L_Fric]);
+//		rm_motor[UP_Fric].single_set_speed(&rm_motor[UP_Fric]);
+//	}
+//	switch(shoot->base_info.dail_info.pid_mode)//æ‹¨ç›˜pidè®¡ç®—
+//	{
+//	  case double_pid:
+//  		if(shoot->shoot_status == off_fire)
+//  		{
+//  			shoot->dail->tx_info->torque=0;
+//  		}
+//  		else
+//  		{
+//  			shoot->dail->ctrl->position_out->target=shoot->base_info.dail_info.target_angle_sum;//å•å‘ä½ç½®ç¯
+//  			shoot->dail->ctrl->position_out->measure=DAIL.rx_info->motor_angle_sum;
+//  			DM_Motor_Set_Angle_Position(&DAIL);
+//  		}
+//  	break;
+//  	case single_pid:
+//  		shoot->dail->ctrl->speed_ctrl->target=shoot->base_info.dail_info.target_speed;//è¿å‘é€Ÿåº¦ç¯
+//  		DAIL.single_set_speed(&DAIL);
+//  	break;
+//  	default:  		
+//	  break;  	
+//	}
+//}
+//å¤–éƒ¨è·å–
+//static uint32_t t;
+//void Shoot_extern_get(shoot_t *shoot)
+//{
+//	shoot->config.target_B_friction_speed = Board_Rx_Info.fric_speed_tar;
+//	shoot->base_info.dail_info.is_dail_reset = Board_Rx_Info.is_dail_reset;
+//	
+//}
+///å‘å°„æ§åˆ¶*
+//void Shoot_ctrl(shoot_t *shoot)
+//{
+//  if(shoot->shoot_status!=off_fire)//åªè¦æ‹¨æ†åœ¨ä¸Š
+//	{				
+//		shoot->base_info.fric_info.target_fric_B_L_speed=shoot->config.target_B_friction_speed;//æ‘©æ“¦è½®è½¬é€Ÿ4350,4550
+//		shoot->base_info.fric_info.target_fric_B_R_speed=-(shoot->config.target_B_friction_speed);
+//		shoot->base_info.fric_info.target_fric_B_UP_speed=-(shoot->config.target_B_friction_speed);
+//		switch(shoot->shoot_status)//åˆ¤æ–­å•å‘è¿å‘
+//		{
+//			case single_fire:
+//		   	shoot->base_info.dail_info.target_angle_sum+=DAIL_ONESHOT_ANGLE;
+//				shoot->base_info.dail_info.pid_mode=double_pid;
+//			
+//				shoot->shoot_status=ready_fire;
+//				shoot->record_status=record_zero;
+//			break;
+//		  case running_fire:
+//		 	  if(HAL_GetTick()-t>=800)
+//		   	{
+//		// 	t++;
+//		 	    shoot->base_info.dail_info.target_angle_sum+=DAIL_ONESHOT_ANGLE;
+//				  shoot->base_info.dail_info.pid_mode=double_pid;
+//				  t=HAL_GetTick();
+//			  }	
+//			break;
+//			default:
+//			break;
+//		}
+//	}
+//	
+//}
+
+///ç¦»çº¿ä¿æŠ¤*
+//void Shoot_offline_detect(shoot_t *shoot)
+//{
+//	
+//
+///å‘å°„æ¿é—´æ›´æ–°*
+//void Shoot_Board_Update(shoot_t *shoot)
+//{
+//	Board_Tx_Info.vision_yaw_tar = vision.rx_info->building_yaw;
+//	Board_Tx_Info.hit_enable = shoot->base_info.is_enable_shoot;
+//  Board_Tx_Info.is_dail_reset = shoot->base_info.dail_info.is_dail_reset;
+//	Board_Tx_Info.is_find_Target = shoot->target.find_Target;
+//	
+//	Board_Tx_Info.launch_timer = shoot->base_info.launch_timer;
+//}
+
+//void Shoot_Work_no(shoot_t *shoot)
+//{
+//	Shoot_dail_usable_judge(shoot);
+//	if(RC_ONLINE)
+//	{
+//		if(shoot->base_info.dail_info.dail_reset_state==DEV_RESET_NO)//å…ˆåˆå§‹åŒ–
+//		{
+//			shoot->base_info.dail_info.init_time++;
+//			shoot->base_info.dail_info.target_speed=-1500;//åè½¬
+//			shoot->base_info.dail_info.pid_mode=single_pid;
+//			
+//			if(shoot->base_info.dail_info.init_time>=2000)//åˆå§‹åŒ–è¶…æ—¶
+//			{
+//				shoot->base_info.dail_info.dail_reset_state=DEV_RESET_OK;
+//				shoot->base_info.dail_info.init_time=0;
+//				shoot->base_info.dail_info.pid_mode=double_pid;
+//				shoot->dail->rx_info->motor_angle_sum=0;
+//				shoot->base_info.dail_info.target_angle_sum=0;	
+//			}
+//			
+//			if(my_abs(shoot->dail->ctrl->position_inn->measure)<=15 && my_abs(shoot->dail->ctrl->position_inn->out)>=2000)//å µè½¬åˆ¤æ–­
+//			{
+//				shoot->base_info.dail_info.count++;
+//				if(shoot->base_info.dail_info.count>=shoot->base_info.dail_info.count_max)//å µè½¬è¾¾åˆ°æ—¶é—´
+//				{
+//					shoot->base_info.dail_info.dail_reset_state=DEV_RESET_OK;
+//					shoot->base_info.dail_info.pid_mode=double_pid;
+//					shoot->dail->rx_info->motor_angle_sum=0;
+//					shoot->base_info.dail_info.target_angle_sum=0;	
+//					shoot->base_info.dail_info.target_angle_sum+=DAIL_INIT_ANGLE;
+//					shoot->base_info.dail_info.count=0;
+//					shoot->base_info.dail_info.running_shoot_time=0;
+//					shoot->record_status=record_zero;
+////					shoot->shoot_status=off_fire;
+
+//				}
+//			}
+//		}			
+//	
+//		else//åˆå§‹åŒ–å®Œäº†è¿›ä¸»ç¨‹åº
+//		{
+//			*å µè½¬*
+//			if(((my_abs(shoot->fric_b_l->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[L_Fric].rx_info->speed)<=20)  //å µè½¬åˆ¤æ–­
+//			 ||(my_abs(shoot->fric_b_r->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[R_Fric].rx_info->speed)<=20)
+//			 ||(my_abs(shoot->fric_b_up->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[UP_Fric].rx_info->speed)<=20)
+//			 ||(my_abs(shoot->dail->ctrl->position_inn->measure)<=15 && shoot->dail->ctrl->position_inn->out>=12000))
+//			 && shoot->shoot_status!=off_fire && shoot->base_info.dail_info.stuck_flag==0)
+//			{
+//				shoot->stuck_count++;
+//				if(shoot->stuck_count>=100)
+//				{
+//					shoot->base_info.dail_info.target_angle_sum+=DAIL_REVERT_PISITION;
+//					shoot->base_info.dail_info.pid_mode=double_pid;
+//					shoot->record_status=record_zero;
+//				}
+//			}
+//				
+//				//////////////////////////////ä¸å µè½¬///////////////
+//			else
+//			{
+//			 shoot->stuck_count=0;
+//					
+//				if(shoot->shoot_status!=off_fire)//åªè¦æ‹¨æ†åœ¨ä¸Š
+//				{				
+//					shoot->base_info.fric_info.target_fric_B_L_speed=shoot->config.target_B_friction_speed;//æ‘©æ“¦è½®è½¬é€Ÿ4350,4550
+//					shoot->base_info.fric_info.target_fric_B_R_speed=-(shoot->config.target_B_friction_speed);
+//					shoot->base_info.fric_info.target_fric_B_UP_speed=-(shoot->config.target_B_friction_speed);
+//					
+//					switch(shoot->shoot_status)//åˆ¤æ–­å•å‘è¿å‘
+//					{
+//						case single_fire:
+//							shoot->base_info.dail_info.target_angle_sum+=DAIL_ONESHOT_ANGLE;
+//							shoot->base_info.dail_info.pid_mode=double_pid;
+//						
+//							shoot->shoot_status=ready_fire;
+//							shoot->record_status=record_zero;
+//						break;
+//						case running_fire:
+//							if(HAL_GetTick()-t>=1000)
+//							{
+//		//						tt++;
+//								shoot->base_info.dail_info.target_angle_sum+=DAIL_ONESHOT_ANGLE;
+//								shoot->base_info.dail_info.pid_mode=double_pid;
+//								t=HAL_GetTick();
+//							}	
+//						break;
+//						default:
+//						break;
+//					}
+//				}
+//				else//æ‹¨æ†ä¸åœ¨ä¸Š
+//				{
+//					shoot->base_info.fric_info.target_fric_B_L_speed=0;
+//					shoot->base_info.fric_info.target_fric_B_R_speed=0;
+//					shoot->base_info.fric_info.target_fric_B_UP_speed=0;
+//					shoot->base_info.dail_info.now_encoder=shoot->dail->rx_info->motor_angle;/////////////////////
+//					
+//					shoot->base_info.dail_info.pid_mode=double_pid;
+//					shoot->record_status=record_zero;				
+//			  }
+//		  }
+//	  }
+//	}
+//	else//å…³æ§
+//	{
+//		shoot->base_info.fric_info.target_fric_B_L_speed=0;
+//		shoot->base_info.fric_info.target_fric_B_R_speed=0;
+//		shoot->base_info.fric_info.target_fric_B_UP_speed=0;
+//		shoot->record_status=record_zero;
+//		shoot->shoot_status=off_fire;
+//		shoot->base_info.dail_info.dail_reset_state=DEV_RESET_NO;
+//    shoot->base_info.dail_info.target_angle_sum=0;
+//	}			
+
+//  Shoot_pid_cal(shoot);
+//	///////////////////////////////////////////////////////////////////////////////////////////////////////////ã€ã€ã€ã€ã€ã€ã€ã€ã€ã€ã€ã€ã€ã€ã€ã€
+//	
+//	if(RC_ONLINE)
+//	{
+//		if(shoot->fric_b_l->state == DEV_ONLINE && shoot->fric_b_r->state == DEV_ONLINE &&         //æ‰çº¿ä¿æŠ¤//
+//			shoot->fric_b_up->state == DEV_ONLINE && shoot->dail->state == DEV_ONLINE)
+//		{
+//			if(shoot->shoot_status!=off_fire)
+//			{
+//				if(shoot->base_info.dail_info.dail_reset_state==DEV_RESET_NO)//åˆ¤æ–­åˆå§‹åŒ–               //æ‹¨ç›˜åˆå§‹åŒ–//
+//				{
+//					shoot->base_info.dail_info.init_time++;
+//					shoot->base_info.dail_info.target_speed=-1500;//åè½¬
+//					shoot->base_info.dail_info.pid_mode=single_pid;
+//					
+//					if(shoot->base_info.dail_info.init_time>=2000)//åˆå§‹åŒ–è¶…æ—¶
+//					{
+//						shoot->base_info.dail_info.dail_reset_state=DEV_RESET_OK;
+//						shoot->base_info.dail_info.init_time=0;
+//						shoot->base_info.dail_info.pid_mode=double_pid;
+//						shoot->dail->rx_info->motor_angle_sum=0;
+//						shoot->base_info.dail_info.target_angle_sum=0;	
+//					}
+//					
+//					if(my_abs(shoot->dail->ctrl->position_inn->measure)<=15 && my_abs(shoot->dail->ctrl->position_inn->out)>=2000)//å µè½¬åˆ¤æ–­
+//					{
+//						shoot->base_info.dail_info.count++;
+//						if(shoot->base_info.dail_info.count>=shoot->base_info.dail_info.count_max)//å µè½¬è¾¾åˆ°æ—¶é—´
+//						{
+//							shoot->base_info.dail_info.dail_reset_state=DEV_RESET_OK;
+//							shoot->base_info.dail_info.pid_mode=double_pid;
+//							shoot->dail->rx_info->motor_angle_sum=0;
+//							shoot->base_info.dail_info.target_angle_sum=0;	
+//							shoot->base_info.dail_info.target_angle_sum+=DAIL_INIT_ANGLE;
+//							shoot->base_info.dail_info.count=0;
+//							shoot->base_info.dail_info.running_shoot_time=0;
+//							shoot->record_status=record_zero;
+//			//				shoot->shoot_status=off_fire;
+
+//						}
+//					}
+//				}
+//			  else                                                                           
+//				{
+//					if(((my_abs(shoot->fric_b_l->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[L_Fric].rx_info->speed)<=20)  //å µè½¬åˆ¤æ–­///
+//			      ||(my_abs(shoot->fric_b_r->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[R_Fric].rx_info->speed)<=20)
+//		     	  ||(my_abs(shoot->fric_b_up->ctrl->speed_ctrl->out)>=4000 && my_abs(rm_motor[UP_Fric].rx_info->speed)<=20)
+//		     	  ||(my_abs(shoot->dail->ctrl->position_inn->measure)<=15 && shoot->dail->ctrl->position_inn->out>=12000))
+//		      	 && shoot->shoot_status!=off_fire && shoot->base_info.dail_info.stuck_flag==0)
+//		     	{
+//			     	shoot->stuck_count++;
+//		     		if(shoot->stuck_count>=100)
+//		     		{
+//		     			shoot->base_info.dail_info.target_angle_sum+=DAIL_REVERT_PISITION;
+//		     			shoot->base_info.dail_info.pid_mode=double_pid;
+//		     			shoot->record_status=record_zero;
+//		     		}
+//		     	}
+//					else
+//		     	{
+//		     	  shoot->stuck_count=0;                                                                                     //ä¸å µè½¬æ§///
+//					
+//		     		shoot->base_info.fric_info.target_fric_B_L_speed=shoot->config.target_B_friction_speed;//æ‘©æ“¦è½®è½¬é€Ÿ4350,4550
+//		     		shoot->base_info.fric_info.target_fric_B_R_speed=-(shoot->config.target_B_friction_speed);
+//		     		shoot->base_info.fric_info.target_fric_B_UP_speed=-(shoot->config.target_B_friction_speed);
+//		     			
+//		     		switch(shoot->shoot_status)//åˆ¤æ–­å•å‘è¿å‘
+//			     	{
+//		     			case single_fire:
+//		     	    	shoot->base_info.dail_info.target_angle_sum+=DAIL_ONESHOT_ANGLE;
+//		     				shoot->base_info.dail_info.pid_mode=double_pid;
+//		     			
+//		     				shoot->shoot_status=ready_fire;
+//		     				shoot->record_status=record_zero;
+//		     			break;
+//		     			case running_fire:
+//		     				if(HAL_GetTick()-t>=1000)
+//		     				{
+//		//			    	tt++;
+//						    	shoot->base_info.dail_info.target_angle_sum+=DAIL_ONESHOT_ANGLE;
+//					    		shoot->base_info.dail_info.pid_mode=double_pid;
+//					    		t=HAL_GetTick();
+//					    	}	
+//				    		break;
+//			     		default:
+//			     		break;
+//			     	}
+//			     	
+//			     
+//		       }     
+//				}
+//					
+//			}
+//			else//æ‹¨æ†ä¸åœ¨ä¸Š
+//			{
+//			  shoot->base_info.fric_info.target_fric_B_L_speed=0;
+//			  shoot->base_info.fric_info.target_fric_B_R_speed=0;
+//			  shoot->base_info.fric_info.target_fric_B_UP_speed=0;
+//			  shoot->base_info.dail_info.now_encoder=shoot->dail->rx_info->motor_angle;/////////////////////
+//			     		
+//			  shoot->base_info.dail_info.pid_mode=double_pid;
+//			  shoot->record_status=record_zero;				
+//		  }
+//		}
+//	}
+//	else//å…³æ§
+//	{
+//		
+//	}
+//}
+
+//void Shoot_Work(shoot_t *shoot)
+//{
+//	Shoot_offline_detect(shoot);
+//	Shoot_dail_usable_judge(shoot);
+//	Shoot_extern_get(shoot);
+//	if(shoot->base_info.dail_info.is_dail_reset == 1)
+//	{
+//		Shoot_dail_reset(shoot);
+//	}
+//	Shoot_ctrl(shoot);
+//	Shoot_pid_cal(shoot);
+//}
 */

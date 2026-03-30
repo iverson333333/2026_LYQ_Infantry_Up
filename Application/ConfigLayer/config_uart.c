@@ -1,32 +1,32 @@
-#include "config_uart.h"
-#include "rc_sensor.h"
-
-
-/**
-  * @Name    USART1_rxDataHandler
-  * @brief   ÊÓ¾õÊı¾İ¸üĞÂ
-**/
-//void USART1_rxDataHandler(uint8_t *rxBuf)//ºóĞø»»Ö¸Õë
-//{
-//  Vision_DataRx(rxBuf);
-//}
-
-/**
-  * @Name    USART3_rxDataHandler
-  * @brief    
-**/
-
-void USART3_rxDataHandler(uint8_t *rxBuf)
-{
-
-}
-
-/**
-  * @Name    USART6_rxDataHandler
-  * @brief    °å¼ä
-**/
-
-//void USART6_rxDataHandler(uint8_t *rxBuf)//ºóĞø»»Ö¸Õë
-//{
-//	
-//}
+#include "config_uart.h"
+#include "rc_sensor.h"
+
+
+/**
+  * @Name    USART1_rxDataHandler
+  * @brief   è§†è§‰æ•°æ®æ›´æ–°
+**/
+//void USART1_rxDataHandler(uint8_t *rxBuf)//åç»­æ¢æŒ‡é’ˆ
+//{
+//  Vision_DataRx(rxBuf);
+//}
+
+/**
+  * @Name    USART3_rxDataHandler
+  * @brief    
+**/
+
+void USART3_rxDataHandler(uint8_t *rxBuf)
+{
+
+}
+
+/**
+  * @Name    USART6_rxDataHandler
+  * @brief    æ¿é—´
+**/
+
+//void USART6_rxDataHandler(uint8_t *rxBuf)//åç»­æ¢æŒ‡é’ˆ
+//{
+//	
+//}

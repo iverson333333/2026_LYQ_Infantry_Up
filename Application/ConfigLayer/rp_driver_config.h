@@ -1,105 +1,105 @@
-#ifndef __RP_DRIVER_CONFIG_H
-#define __RP_DRIVER_CONFIG_H
-
-/* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx_hal.h"
-#include "stdbool.h"
-
-/* Exported macro ------------------------------------------------------------*/
-#define configDRV_CAN_USE_MAIL  1
-
-/* Exported types ------------------------------------------------------------*/
-/* Çı¶¯²ã --------------------------------------------------------------------*/
-/**
- *	@brief	Çı¶¯ÀàĞÍ
- *	@class	driver
- */
-typedef enum drv_type{
-		DRV_CAN,
-		DRV_PWM,
-		DRV_SPI,
-		DRV_IIC,
-		DRV_UART,
-} drv_type_t;
-
-/**
- *	@brief	canÇı¶¯ id
- *	@class	driver
- */
-typedef enum {
-    DRV_CAN1,
-    DRV_CAN2
-} can_id_t;
-
-/**
- *	@brief	iicÇı¶¯ id
- *	@class	driver
- */
-typedef enum {
-    DRV_IIC1
-} iic_id_t;
-
-/**
- *	@brief	spiÇı¶¯ id
- *	@class	driver
- */
-typedef enum {
-    DRV_SPI1
-} spi_id_t;
-
-/**
- *	@brief	uartÇı¶¯ id
- *	@class	driver
- */
-typedef enum {
-    DRV_UART1,
-    DRV_UART2,
-    DRV_UART3,
-    DRV_UART4,
-    DRV_UART5,
-		DRV_UART6,
-} uart_id_t;
-
-/**
- *	@brief	iicÇı¶¯
- *	@class	driver
- */
-typedef struct drv_iic {
-    drv_type_t 	type;
-		iic_id_t 	id;
-} drv_iic_t;
-
-/**
- *	@brief	canÇı¶¯
- *	@class	driver
- */
-typedef struct drv_can {
-    can_id_t    can_id;				// CAN1»òCAN2
-    uint32_t    err_cnt;
-	uint32_t	rx_id;  		// ·´À¡±¨ÎÄ±êÊ¶·û
-	uint32_t	tx_id;  		// ÉÏ´«±¨ÎÄ±êÊ¶·û
-	uint8_t		data_id;		// Êı¾İÏÂ±ê
-    uint16_t    tx_period;  	// ¶¨Ê±·¢ËÍ¼ä¸ô(ms)
-	uint8_t		*CANx_XXX_DATA; // ·¢ËÍµÄÊı×é
-} drv_can_t;
-
-/**
- *	@brief	pwmÇı¶¯
- *	@class	driver
- */
-typedef struct drv_pwm {
-		drv_type_t	type;
-		void				(*output)(struct drv_pwm *self, int16_t pwm);
-} drv_pwm_t;
-
-/**
- *	@brief	uartÇı¶¯
- *	@class	driver
- */
-typedef struct drv_uart {
-		drv_type_t	type;
-    uart_id_t   id;
-		void				(*tx_byte)(struct drv_uart *self, uint8_t byte);
-} drv_uart_t;
-
-#endif
+#ifndef __RP_DRIVER_CONFIG_H
+#define __RP_DRIVER_CONFIG_H
+
+/* Includes ------------------------------------------------------------------*/
+#include "stm32f4xx_hal.h"
+#include "stdbool.h"
+
+/* Exported macro ------------------------------------------------------------*/
+#define configDRV_CAN_USE_MAIL  1
+
+/* Exported types ------------------------------------------------------------*/
+/* é©±åŠ¨å±‚ --------------------------------------------------------------------*/
+/**
+ *	@brief	é©±åŠ¨ç±»å‹
+ *	@class	driver
+ */
+typedef enum drv_type{
+		DRV_CAN,
+		DRV_PWM,
+		DRV_SPI,
+		DRV_IIC,
+		DRV_UART,
+} drv_type_t;
+
+/**
+ *	@brief	cané©±åŠ¨ id
+ *	@class	driver
+ */
+typedef enum {
+    DRV_CAN1,
+    DRV_CAN2
+} can_id_t;
+
+/**
+ *	@brief	iicé©±åŠ¨ id
+ *	@class	driver
+ */
+typedef enum {
+    DRV_IIC1
+} iic_id_t;
+
+/**
+ *	@brief	spié©±åŠ¨ id
+ *	@class	driver
+ */
+typedef enum {
+    DRV_SPI1
+} spi_id_t;
+
+/**
+ *	@brief	uarté©±åŠ¨ id
+ *	@class	driver
+ */
+typedef enum {
+    DRV_UART1,
+    DRV_UART2,
+    DRV_UART3,
+    DRV_UART4,
+    DRV_UART5,
+		DRV_UART6,
+} uart_id_t;
+
+/**
+ *	@brief	iicé©±åŠ¨
+ *	@class	driver
+ */
+typedef struct drv_iic {
+    drv_type_t 	type;
+		iic_id_t 	id;
+} drv_iic_t;
+
+/**
+ *	@brief	cané©±åŠ¨
+ *	@class	driver
+ */
+typedef struct drv_can {
+    can_id_t    can_id;				// CAN1æˆ–CAN2
+    uint32_t    err_cnt;
+	uint32_t	rx_id;  		// åé¦ˆæŠ¥æ–‡æ ‡è¯†ç¬¦
+	uint32_t	tx_id;  		// ä¸Šä¼ æŠ¥æ–‡æ ‡è¯†ç¬¦
+	uint8_t		data_id;		// æ•°æ®ä¸‹æ ‡
+    uint16_t    tx_period;  	// å®šæ—¶å‘é€é—´éš”(ms)
+	uint8_t		*CANx_XXX_DATA; // å‘é€çš„æ•°ç»„
+} drv_can_t;
+
+/**
+ *	@brief	pwmé©±åŠ¨
+ *	@class	driver
+ */
+typedef struct drv_pwm {
+		drv_type_t	type;
+		void				(*output)(struct drv_pwm *self, int16_t pwm);
+} drv_pwm_t;
+
+/**
+ *	@brief	uarté©±åŠ¨
+ *	@class	driver
+ */
+typedef struct drv_uart {
+		drv_type_t	type;
+    uart_id_t   id;
+		void				(*tx_byte)(struct drv_uart *self, uint8_t byte);
+} drv_uart_t;
+
+#endif

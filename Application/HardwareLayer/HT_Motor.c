@@ -1,542 +1,542 @@
-/**
- * @file        Ht_Motor.c
- * @author      2025_YZJ
- * @Version     V1.0
- * @date        8-Febraruary-2025
- * @brief       º£Ì©µç»ú°ü(ÊÊÓÃĞÍºÅHT-03£©
- * @brief       »¹Î´ÍêÉÆ£¬ÓÉÓÚÖ»×÷ÎªÂÖì±µç»úÊ¹ÓÃ£¬Ö»Ğ´ÁË²¿·Ö¹¦ÄÜ
- */
- 
-/* Includes ------------------------------------------------------------------*/
-#include "HT_Motor.h"
-
-static uint8_t Motor_Command[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD};
-static void Motor_Send_Data(Motor_HT_t *motor, uint8_t* buf);
-static void Motor_Send_Command(Motor_HT_t *motor, Motor_MIT_Command_e Command);
-static void HT_Motor_SetControlPara(Motor_HT_t *motor);
-static uint16_t float_to_uint_(float x, float x_min, float x_max, uint8_t bits);
-static float uint_to_float_(uint16_t x_int, float x_min, float x_max, uint8_t bits);
-static void Encoder_to_Motor_Angle(Motor_HT_t *motor);
-uint8_t flag_rx;
-/**
-  * @brief          µ¥µç»úĞ¶Á¦
-  * @param[in]      Motor_HT_t *motor     µç»ú±¾Ìå
-  * @retval         none
-  */
-void HT_Single_Motor_Sleep(Motor_HT_t *motor)
-{
-	if(motor != NULL)
-	{
-//		if(motor->state->mode == Motor_UnControl)
-//		{
-//			Motor_Send_Command(motor, Enter_Motor_Mode);//¿ªÆôµç»ú¿ØÖÆ
-//			motor->state->mode = Motor_Control;
-//		}
-		
-		Motor_HT_Tx_Info_t* motor_tx_info = motor->tx_info;
-		motor_tx_info->torque = 0;
-		motor_tx_info->Kd = 0;
-		motor_tx_info->Kp = 0;
-	}
-}
-
-/**
-  * @brief          µ¥µç»úÖÃÁã±àÂëÆ÷
-  * @param[in]      Motor_HT_t *motor     µç»ú±¾Ìå
-  * @retval         none
-  */
-void HT_Single_Motor_ZeroPosSensor(Motor_HT_t *motor)
-{
-	if(motor != NULL)
-	{
-		motor->single_sleep(motor);//ÏÈ¶Ôµç»úĞ¶Á¦
-		
-		Motor_Send_Command(motor, Zero_Position_Sensor);
-	}
-}
-
-/**
-  * @brief          µ¥µç»ú¿ØÖÆÊä³ö×ª¾Ø,º¬ÓĞCAN·¢ËÍ²Ù×÷
-  * @param[in]      Motor_HT_t *motor     µç»ú±¾Ìå
-  * @retval         none
-  */
-void HT_Single_Motor_Set_Torque(Motor_HT_t *motor)
-{
-	  if(motor != NULL)
-		{
-			if(motor->state->mode == Motor_UnControl)
-			{
-				Motor_Send_Command(motor, Enter_Motor_Mode);//¿ªÆôµç»ú¿ØÖÆ
-				motor->state->mode = Motor_Control;
-			}
-			else
-			{
-				Motor_HT_Tx_Info_t* motor_tx_info = motor->tx_info;
-				motor_tx_info->target_angle = 0;
-				motor_tx_info->target_speed = 0;
-				motor_tx_info->Kp = 0;
-				motor_tx_info->Kd = 0;
-				HT_Motor_SetControlPara(motor);
-				Motor_Send_Data(motor, motor_tx_info->single_tx_buff);
-			}
-		}
-}
-
-/**
-  * @brief          µ¥µç»ú¿ØÖÆËÙ¶È,ĞèÒª×ÔĞĞÉèÖÃkd\target_speed\torque,º¬ÓĞCAN·¢ËÍ²Ù×÷
-  * @param[in]      Motor_HT_t *motor     µç»ú±¾Ìå
-  * @retval         none
-  */
-void HT_Single_Motor_Set_Speed(Motor_HT_t *motor)
-{
-	  if(motor != NULL)
-		{
-			if(motor->state->mode == Motor_UnControl)
-			{
-				Motor_Send_Command(motor, Enter_Motor_Mode);//¿ªÆôµç»ú¿ØÖÆ
-				motor->state->mode = Motor_Control;
-			}
-			
-			Motor_HT_Tx_Info_t* motor_tx_info = motor->tx_info;
-			motor_tx_info->target_angle = 0;
-			motor_tx_info->Kp = 0;
-			HT_Motor_SetControlPara(motor);
-		
-			Motor_Send_Data(motor, motor_tx_info->single_tx_buff);
-		}
-}
-
-/**
-  * @brief          µ¥µç»ú¿ØÖÆ½Ç¶È,ĞèÒª×ÔĞĞÉèÖÃkp\target_angle\kd\target_speed\torque,º¬ÓĞCAN·¢ËÍ²Ù×÷
-  * @param[in]      Motor_HT_t *motor     µç»ú±¾Ìå
-  * @retval         none
-  */
-void HT_Single_Motor_Set_Angle(Motor_HT_t *motor)
-{
-	  if(motor != NULL)
-		{
-			if(motor->state->mode == Motor_UnControl)
-			{
-				Motor_Send_Command(motor, Enter_Motor_Mode);//¿ªÆôµç»ú¿ØÖÆ
-				motor->state->mode = Motor_Control;
-			}
-			
-			Motor_HT_Tx_Info_t* motor_tx_info = motor->tx_info;
-			HT_Motor_SetControlPara(motor);
-			Motor_Send_Data(motor, motor_tx_info->single_tx_buff);
-		}
-}
-
-/**
-  * @brief          µç»úCANÖĞ¶Ï½ÓÊÕÊı¾İ´¦Àí
-  * @param[in]      Motor_HT_t *motor      µç»ú±¾Ìå
-  * @param[in]      uint8_t *rxBuf						CAN½ÓÊÕÊı¾İ°ü
-  * @retval         none
-  */
-void static Motor_ReceiveData(Motor_HT_t *motor, uint8_t *rxBuf)
-{
-	Motor_HT_Rx_Info_t* motor_rx_info = motor->rx_info;
-	motor_rx_info->encoder = uint_to_float((uint16_t)((rxBuf[1] << 8) | rxBuf[2]), HT_P_MIN, HT_P_MAX, 16);
-	motor_rx_info->speed = uint_to_float((uint16_t)((rxBuf[3] << 4) | (rxBuf[4] >> 4)), HT_V_MIN, HT_V_MAX, 12) * motor->born_info->order_correction;
-	motor_rx_info->torque_current = uint_to_float((uint16_t)(((rxBuf[4]&0x0F) << 8) | rxBuf[5]), HT_C_MIN, HT_C_MAX, 12);
-	motor_rx_info->torque = motor_rx_info->torque_current * HT_TORQUE_CONSTANT;
-	Encoder_to_Motor_Angle(motor);
-	motor_rx_info->motor_angle_sum_vi += motor_rx_info->speed * TIME_STEP;
-	motor->state->offline_cnt = 0;
-}
-
-/**
-  * @brief          µ¥µç»úĞÄÌø°ü
-  * @param[in]      Motor_HT_t *motor    µç»ú±¾Ìå
-  * @retval         none
-  */
-void HT_Motor_Hearbeat(Motor_HT_t *motor)
-{
-	motor->state->offline_cnt++;
-	
-	if(motor->state->offline_cnt > motor->state->offline_cnt_max) 
-	{
-//		motor->state->offline_cnt = motor->state->offline_cnt_max;
-		motor->state->status = DEV_OFFLINE;
-		motor->state->mode = Motor_UnControl;
-	}
-	else 
-	{
-		if(motor->state->status == DEV_OFFLINE)
-			motor->state->status = DEV_ONLINE;
-	}
-}
-
-/**
-  * @brief          µ¥µç»ú³õÊ¼»¯
-  * @param[in]      Motor_HT_t *motor     µç»ú±¾Ìå
-  * @retval         none
-  */
-void HT_Single_Motor_Init(Motor_HT_t *motor)
-{
-	motor->state->mode = Motor_UnControl;
-	motor->single_sleep = HT_Single_Motor_Sleep;
-	motor->zero_position = HT_Single_Motor_ZeroPosSensor;
-	motor->single_set_torque = HT_Single_Motor_Set_Torque;
-	motor->single_set_speed  = HT_Single_Motor_Set_Speed;
-	motor->single_set_angle  = HT_Single_Motor_Set_Angle;
-	motor->rx = Motor_ReceiveData;
-	motor->single_heart_beat = HT_Motor_Hearbeat;
-	/*¿ªÆôµç»ú¿ØÖÆ*/
-	motor->single_sleep(motor);
-	motor->state->offline_cnt_max = 500;
-	motor->rx_info->motor_angle_sum = 0;
-}
-
-/*..........................................¶àµç»ú..........................................*/
-
-/**
-  * @brief          ¶àµç»ú£¨1~4¸ö£©µç»ú¿ØÖÆÊä³ö×ª¾Ø,4¸öµç»ú±ØĞëÎªÍ¬Ò»ÀàĞÍ£»º¬ÓĞCAN·¢ËÍ²Ù×÷
-  * @param[in]      Motor_HT_Group_t *group     µç»ú×é
-  * @retval         none
-  */
-static void Group_Motor_Set_Torque(Motor_HT_Group_t *group)
-{	
-	
-		if(group->motor[0] != NULL)
-		{
-			group->motor[0]->single_set_angle(group->motor[0]);
-		}
-		if(group->motor[1] != NULL)
-		{
-			group->motor[1]->single_set_angle(group->motor[1]);
-		}
-		if(group->motor[2] != NULL)
-		{
-			group->motor[2]->single_set_angle(group->motor[2]);
-		}
-		if(group->motor[3] != NULL)
-		{
-			group->motor[3]->single_set_angle(group->motor[3]);
-		}
-}
-
-/**
-  * @brief          ¶àµç»ú£¨1~4¸ö£©µç»ú¿ØÖÆĞ¶Á¦£»²»º¬ÓĞCAN·¢ËÍ²Ù×÷
-  * @param[in]      Motor_HT_Group_t *group     µç»ú×é
-  * @retval         none
-  */
-static void Group_Motor_Sleep(Motor_HT_Group_t *group)
-{	
-		if(group->motor[0] != NULL)
-		{
-			group->motor[0]->single_sleep(group->motor[0]);
-		}
-		if(group->motor[1] != NULL)
-		{
-			group->motor[1]->single_sleep(group->motor[1]);
-		}
-		if(group->motor[2] != NULL)
-		{
-			group->motor[2]->single_sleep(group->motor[2]);
-		}
-		if(group->motor[3] != NULL)
-		{
-			group->motor[3]->single_sleep(group->motor[3]);
-		}
-}
-
-/**
-  * @brief          µç»ú×éĞÄÌø°ü
-  * @param[in]      Motor_HT_Group_t *group     µç»ú×é
-  * @retval         none
-  */
-static void Group_Motor_Heartbeat(Motor_HT_Group_t *group)
-{
-	if(group->motor[0] != NULL)
-	{
-		group->motor[0]->single_heart_beat(group->motor[0]);
-	}
-	  
-	if(group->motor[1] != NULL)
-	{
-		group->motor[1]->single_heart_beat(group->motor[1]);
-	}
-
-  if(group->motor[2] != NULL)
-	{
-		group->motor[2]->single_heart_beat(group->motor[2]);
-	}
-	  
-	if(group->motor[3] != NULL)
-	{
-		group->motor[3]->single_heart_beat(group->motor[3]);
-	}
-}
-
-
-/**
-  * @brief          µç»ú×é³õÊ¼»¯
-  * @param[in]      Motor_HT_Group_t *group     µç»ú×é
-  * @retval         none
-  */
-void HT_Group_Motor_Init(Motor_HT_Group_t *group)
-{
-	  if(group->motor[0] != NULL)
-		{
-			group->motor[0]->single_init = HT_Single_Motor_Init;
-	    group->motor[0]->single_init(group->motor[0]);
-		}
-	  
-		if(group->motor[1] != NULL)
-		{
-			group->motor[1]->single_init = HT_Single_Motor_Init;
-	    group->motor[1]->single_init(group->motor[1]);
-		}
-
-    if(group->motor[2] != NULL)
-		{
-			group->motor[2]->single_init = HT_Single_Motor_Init;
-	    group->motor[2]->single_init(group->motor[2]);
-		}
-	  
-		if(group->motor[3] != NULL)
-		{
-			group->motor[3]->single_init = HT_Single_Motor_Init;
-	    group->motor[3]->single_init(group->motor[3]);
-		}
-	  
-	
-	  group->group_set_torque = Group_Motor_Set_Torque;
-		group->group_heartbeat = Group_Motor_Heartbeat;
-	  group->group_sleep = Group_Motor_Sleep;
-}
-
-/*..........................................¹¤¾ßº¯Êı..........................................*/
-/**
-  * @brief          ÕûºÏ²¢·¢ËÍµç»úÃüÁî±¨ÎÄ
-  * @param          Motor_HT_t *motor
-  * @param[in]      Motor_HT_Command_e Command
-  * @retval         none
-  */
-static void Motor_Send_Command(Motor_HT_t *motor, Motor_MIT_Command_e Command)
-{
-	switch(Command)
-	{
-		case Enter_Motor_Mode:
-		Motor_Command[7] = 0xFC;
-		break;
-		case Exit_Motor_Mode:
-		Motor_Command[7] = 0xFD;
-		break;
-		case Zero_Position_Sensor:
-		Motor_Command[7] = 0xFE;
-		break;
-		default:
-		break;
-	}
-	Motor_Send_Data(motor, Motor_Command);
-}
-
-/**
-  * @brief          ¸ù¾İ½á¹¹ÌåĞÅÏ¢·¢ËÍ±¨ÎÄ
-  * @param          Motor_HT_t *motor
-  * @param          uint8_t* buf Òª·¢ËÍµÄ±¨ÎÄĞÅÏ¢
-  * @retval         none
-  */
-static void Motor_Send_Data(Motor_HT_t *motor, uint8_t* buf)
-{
-	Motor_HT_Born_Info_t* motor_born_info = motor->born_info;
-	
-	CAN_SendData(motor_born_info->hcan, motor_born_info->stdId, buf);
-}
-
-/**
-  * @brief          ¸ù¾İ·¢ËÍµÄ±¨ÎÄĞÅÏ¢ÉèÖÃ±¨ÎÄ
-  * @param          Motor_HT_t *motor
-  * @retval         none
-  */
-static void HT_Motor_SetControlPara(Motor_HT_t *motor)
-{
-	Motor_HT_Tx_Info_t* motor_tx_info = motor->tx_info;
-	uint16_t p, v, kp, kd, t;
-  uint8_t* buf = motor_tx_info->single_tx_buff;
-	
-	/* ÏŞÖÆÊäÈëµÄ²ÎÊıÔÚ¶¨ÒåµÄ·¶Î§ÄÚ */
-	motor_tx_info->target_angle = constrain(motor_tx_info->target_angle, HT_P_MIN, HT_P_MAX);
-	motor_tx_info->target_speed = constrain(motor_tx_info->target_speed, HT_V_MIN, HT_V_MAX);
-	motor_tx_info->Kp = constrain(motor_tx_info->Kp, HT_KP_MIN, HT_KP_MAX);
-	motor_tx_info->Kd = constrain(motor_tx_info->Kd, HT_KD_MIN, HT_KD_MAX);
-	motor_tx_info->torque = constrain(motor_tx_info->torque, -8, 8);
-	
-	/* ¸ù¾İĞ­Òé£¬¶Ôfloat²ÎÊı½øĞĞ×ª»» */
-	p = float_to_uint(motor_tx_info->target_angle,      HT_P_MIN,  HT_P_MAX,  16);            
-	v = float_to_uint(motor_tx_info->target_speed,      HT_V_MIN,  HT_V_MAX,  12);
-	kp = float_to_uint(motor_tx_info->Kp,    HT_KP_MIN, HT_KP_MAX, 12);
-	kd = float_to_uint(motor_tx_info->Kd,    HT_KD_MIN, HT_KD_MAX, 12);
-	t = float_to_uint(motor_tx_info->torque,      HT_T_MIN,  HT_T_MAX,  12);
-	
-	/* ¸ù¾İ´«ÊäĞ­Òé£¬°ÑÊı¾İ×ª»»ÎªCANÃüÁîÊı¾İ×Ö¶Î */
-	buf[0] = p>>8;
-	buf[1] = p&0xFF;
-	buf[2] = v>>4;
-	buf[3] = ((v&0xF)<<4)|(kp>>8);
-	buf[4] = kp&0xFF;
-	buf[5] = kd>>4;
-	buf[6] = ((kd&0xF)<<4)|(t>>8);
-	buf[7] = t&0xff;
-}
-
-/**
-  * @brief  ½«float×ªÎªuint£¬²¢¶ÔÕı¸º×ö´¦Àí,ÓëÍ¨ĞÅĞ­Òé±£³ÖÒ»ÖÂ
-  * @param
-  * @retval 
-  */
-static uint16_t float_to_uint_(float x, float x_min, float x_max, uint8_t bits)
-{
-    float span = x_max - x_min;
-    float offset = x_min;
-    
-    return (uint16_t) ((x-offset)*((float)((1<<bits)-1))/span);
-}
-
-/**
-  * @brief  ½«uint×ªÎªfloat£¬²¢¶ÔÕı¸º×ö´¦Àí
-  * @param
-  * @retval 
-  */
-static float uint_to_float_(uint16_t x_int, float x_min, float x_max, uint8_t bits)
-{
-    float span = x_max - x_min;
-    float offset = x_min;
-    return ((float)x_int)*span/((float)((1<<bits)-1)) + offset;
-}
-
-
-/**
-  * @brief          ½«±àÂëÆ÷Öµ×ª»¯Îª»¡¶ÈÖÆ(0~2PI)
-  * @param[in]      Motor_Ktech_t *motor     µç»ú±¾Ìå
-  * @retval         none
-  */
-static void Encoder_to_Motor_Angle(Motor_HT_t *motor)
-{
-	float order_correction = 0.f;
-	
-	if(motor->born_info->order_correction == 1 || motor->born_info->order_correction == -1)
-	{
-		order_correction = (float)motor->born_info->order_correction;
-	}
-	else
-	{
-		order_correction = 1.f;
-	}
-	
-	//¹ı±àÂëÆ÷ÁãµãÅĞ¶Ï
-	if(!motor->rx_info->encoder_last && !motor->rx_info->motor_angle_sum)//ÉÏÒ»½Ç¶ÈÖµÎª0ÇÒ½Ç¶ÈºÍÎªÁãÊ±£¨µç»úÆô¶¯£©£¬²»¼ÆËãÎó²î
-	{
-		motor->rx_info->encoder_err = 0.f;
-	}
-	else
-	{
-		motor->rx_info->encoder_err = -motor->rx_info->encoder_last + motor->rx_info->encoder;
-	}
-	 
-	if(motor->rx_info->encoder_err > 180.f)
-	{
-		motor->rx_info->encoder_err -= 2*HT_P_MAX;
-	}
-	else if(motor->rx_info->encoder_err < -180.f)
-	{
-		motor->rx_info->encoder_err += 2*HT_P_MAX;
-	}
-	
-	motor->rx_info->motor_angle_sum += motor->rx_info->encoder_err * order_correction;
-	motor->rx_info->motor_angle = motor->rx_info->motor_angle_sum - (int16_t)(motor->rx_info->motor_angle_sum / (2.f*PI)) * 2.f * PI;
-	
-	motor->rx_info->encoder_last = motor->rx_info->encoder;
-	
-}
-
-/*Ê¾Àı´úÂë*/
-/*-------------µç»ú±äÁ¿´´½¨-------------*/
-/*
-
-Motor_HT_Born_Info_t L_Wheel_Born_Info = 
-{	
-	.stdId = 0x009,//µç»ú¿ØÖÆ±¨ÎÄID
-	
-	.hcan = &hcan2,//Ê¹ÓÃµÄCan×ÜÏß
-	
-	.order_correction = 0,//µç»ú×Ü½Ç¶ÈµÄÕı·½ÏòÎªË³Ê±Õë
-	
-};
-
-Motor_HT_Rx_Info_t L_Wheel_Rx_Info_t;
-
-Motor_HT_Tx_Info_t L_Wheel_Tx_Info_t;
-
-Motor_HT_State_t L_Wheel_State_t;
-
-Motor_HT_t L_Wheel = 
-{
-	.born_info = &L_Wheel_Born_Info,
-	
-	.rx_info = &L_Wheel_Rx_Info_t,
-	
-	.tx_info = &L_Wheel_Tx_Info_t,
-	
-	.state = &L_Wheel_State_t,
-	
-	.single_init = &HT_Single_Motor_Init,
-*/
-
-/*-------------³õÊ¼»¯-------------*/
-/*
-L_Wheel.single_init(&L_Wheel);
-*/
-
-/*-------------½ÓÊÕº¯Êı-------------*/
-/*
-void CAN2_rxDataHandler(uint32_t rxId, uint8_t *rxBuf)
-{
-	switch (rxId)
-	{
-		case 0x000://½ÓÊÕID
-		L_Wheel.rx(&L_Wheel, rxBuf);
-		break;
-		default:
-			break;
-	}
-}
-*/
-
-/*-------------ÈÎÎñÖ´ĞĞ-------------*/
-/*
-  * @file    monitor_task.c
-  * @brief   ¼à¿ØÈÎÎñ
-  *          1. ¸÷Ä£¿éĞÄÌøÊ§Áª¼ì²â
-  *          2. ¼à¿ØÒ£¿ØÆ÷×´Ì¬£¬Èí¼ş¸´Î»
-void StartMonitorTask(void const * argument)//
-{
-	
-	for(;;)
-	{
-		L_Wheel.heartbeat(&L_Wheel);
-		
-		osDelay(1);
-	}
-}
-
-  * @file    monitor_task.c
-  * @brief   µç»ú¿ØÖÆÈÎÎñ
-  *          1. ¸øµç»ú·¢ËÍ¿ØÖÆ±¨ÎÄ
-  *          2. ¶Ô×´Ì¬±êÖ¾Î»½øĞĞÏìÓ¦
-void StartMonitorTask(void const * argument)//
-{
-	
-	for(;;)
-	{
-		//·¢ËÍ¿ØÖÆ±¨ÎÄ£¬¿ØÖÆµç»úÊä³öÅ¤¾ØÎª0.5N*m
-		L_Wheel.tx_info->torque = 0.5f;
-		L_Wheel.single_set_torque(&L_Wheel);
-		
-		osDelay(1);
-	}
-}
-
-*/
+/**
+ * @file        Ht_Motor.c
+ * @author      2025_YZJ
+ * @Version     V1.0
+ * @date        8-Febraruary-2025
+ * @brief       æµ·æ³°ç”µæœºåŒ…(é€‚ç”¨å‹å·HT-03ï¼‰
+ * @brief       è¿˜æœªå®Œå–„ï¼Œç”±äºåªä½œä¸ºè½®æ¯‚ç”µæœºä½¿ç”¨ï¼Œåªå†™äº†éƒ¨åˆ†åŠŸèƒ½
+ */
+ 
+/* Includes ------------------------------------------------------------------*/
+#include "HT_Motor.h"
+
+static uint8_t Motor_Command[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD};
+static void Motor_Send_Data(Motor_HT_t *motor, uint8_t* buf);
+static void Motor_Send_Command(Motor_HT_t *motor, Motor_MIT_Command_e Command);
+static void HT_Motor_SetControlPara(Motor_HT_t *motor);
+static uint16_t float_to_uint_(float x, float x_min, float x_max, uint8_t bits);
+static float uint_to_float_(uint16_t x_int, float x_min, float x_max, uint8_t bits);
+static void Encoder_to_Motor_Angle(Motor_HT_t *motor);
+uint8_t flag_rx;
+/**
+  * @brief          å•ç”µæœºå¸åŠ›
+  * @param[in]      Motor_HT_t *motor     ç”µæœºæœ¬ä½“
+  * @retval         none
+  */
+void HT_Single_Motor_Sleep(Motor_HT_t *motor)
+{
+	if(motor != NULL)
+	{
+//		if(motor->state->mode == Motor_UnControl)
+//		{
+//			Motor_Send_Command(motor, Enter_Motor_Mode);//å¼€å¯ç”µæœºæ§åˆ¶
+//			motor->state->mode = Motor_Control;
+//		}
+		
+		Motor_HT_Tx_Info_t* motor_tx_info = motor->tx_info;
+		motor_tx_info->torque = 0;
+		motor_tx_info->Kd = 0;
+		motor_tx_info->Kp = 0;
+	}
+}
+
+/**
+  * @brief          å•ç”µæœºç½®é›¶ç¼–ç å™¨
+  * @param[in]      Motor_HT_t *motor     ç”µæœºæœ¬ä½“
+  * @retval         none
+  */
+void HT_Single_Motor_ZeroPosSensor(Motor_HT_t *motor)
+{
+	if(motor != NULL)
+	{
+		motor->single_sleep(motor);//å…ˆå¯¹ç”µæœºå¸åŠ›
+		
+		Motor_Send_Command(motor, Zero_Position_Sensor);
+	}
+}
+
+/**
+  * @brief          å•ç”µæœºæ§åˆ¶è¾“å‡ºè½¬çŸ©,å«æœ‰CANå‘é€æ“ä½œ
+  * @param[in]      Motor_HT_t *motor     ç”µæœºæœ¬ä½“
+  * @retval         none
+  */
+void HT_Single_Motor_Set_Torque(Motor_HT_t *motor)
+{
+	  if(motor != NULL)
+		{
+			if(motor->state->mode == Motor_UnControl)
+			{
+				Motor_Send_Command(motor, Enter_Motor_Mode);//å¼€å¯ç”µæœºæ§åˆ¶
+				motor->state->mode = Motor_Control;
+			}
+			else
+			{
+				Motor_HT_Tx_Info_t* motor_tx_info = motor->tx_info;
+				motor_tx_info->target_angle = 0;
+				motor_tx_info->target_speed = 0;
+				motor_tx_info->Kp = 0;
+				motor_tx_info->Kd = 0;
+				HT_Motor_SetControlPara(motor);
+				Motor_Send_Data(motor, motor_tx_info->single_tx_buff);
+			}
+		}
+}
+
+/**
+  * @brief          å•ç”µæœºæ§åˆ¶é€Ÿåº¦,éœ€è¦è‡ªè¡Œè®¾ç½®kd\target_speed\torque,å«æœ‰CANå‘é€æ“ä½œ
+  * @param[in]      Motor_HT_t *motor     ç”µæœºæœ¬ä½“
+  * @retval         none
+  */
+void HT_Single_Motor_Set_Speed(Motor_HT_t *motor)
+{
+	  if(motor != NULL)
+		{
+			if(motor->state->mode == Motor_UnControl)
+			{
+				Motor_Send_Command(motor, Enter_Motor_Mode);//å¼€å¯ç”µæœºæ§åˆ¶
+				motor->state->mode = Motor_Control;
+			}
+			
+			Motor_HT_Tx_Info_t* motor_tx_info = motor->tx_info;
+			motor_tx_info->target_angle = 0;
+			motor_tx_info->Kp = 0;
+			HT_Motor_SetControlPara(motor);
+		
+			Motor_Send_Data(motor, motor_tx_info->single_tx_buff);
+		}
+}
+
+/**
+  * @brief          å•ç”µæœºæ§åˆ¶è§’åº¦,éœ€è¦è‡ªè¡Œè®¾ç½®kp\target_angle\kd\target_speed\torque,å«æœ‰CANå‘é€æ“ä½œ
+  * @param[in]      Motor_HT_t *motor     ç”µæœºæœ¬ä½“
+  * @retval         none
+  */
+void HT_Single_Motor_Set_Angle(Motor_HT_t *motor)
+{
+	  if(motor != NULL)
+		{
+			if(motor->state->mode == Motor_UnControl)
+			{
+				Motor_Send_Command(motor, Enter_Motor_Mode);//å¼€å¯ç”µæœºæ§åˆ¶
+				motor->state->mode = Motor_Control;
+			}
+			
+			Motor_HT_Tx_Info_t* motor_tx_info = motor->tx_info;
+			HT_Motor_SetControlPara(motor);
+			Motor_Send_Data(motor, motor_tx_info->single_tx_buff);
+		}
+}
+
+/**
+  * @brief          ç”µæœºCANä¸­æ–­æ¥æ”¶æ•°æ®å¤„ç†
+  * @param[in]      Motor_HT_t *motor      ç”µæœºæœ¬ä½“
+  * @param[in]      uint8_t *rxBuf						CANæ¥æ”¶æ•°æ®åŒ…
+  * @retval         none
+  */
+void static Motor_ReceiveData(Motor_HT_t *motor, uint8_t *rxBuf)
+{
+	Motor_HT_Rx_Info_t* motor_rx_info = motor->rx_info;
+	motor_rx_info->encoder = uint_to_float((uint16_t)((rxBuf[1] << 8) | rxBuf[2]), HT_P_MIN, HT_P_MAX, 16);
+	motor_rx_info->speed = uint_to_float((uint16_t)((rxBuf[3] << 4) | (rxBuf[4] >> 4)), HT_V_MIN, HT_V_MAX, 12) * motor->born_info->order_correction;
+	motor_rx_info->torque_current = uint_to_float((uint16_t)(((rxBuf[4]&0x0F) << 8) | rxBuf[5]), HT_C_MIN, HT_C_MAX, 12);
+	motor_rx_info->torque = motor_rx_info->torque_current * HT_TORQUE_CONSTANT;
+	Encoder_to_Motor_Angle(motor);
+	motor_rx_info->motor_angle_sum_vi += motor_rx_info->speed * TIME_STEP;
+	motor->state->offline_cnt = 0;
+}
+
+/**
+  * @brief          å•ç”µæœºå¿ƒè·³åŒ…
+  * @param[in]      Motor_HT_t *motor    ç”µæœºæœ¬ä½“
+  * @retval         none
+  */
+void HT_Motor_Hearbeat(Motor_HT_t *motor)
+{
+	motor->state->offline_cnt++;
+	
+	if(motor->state->offline_cnt > motor->state->offline_cnt_max) 
+	{
+//		motor->state->offline_cnt = motor->state->offline_cnt_max;
+		motor->state->status = DEV_OFFLINE;
+		motor->state->mode = Motor_UnControl;
+	}
+	else 
+	{
+		if(motor->state->status == DEV_OFFLINE)
+			motor->state->status = DEV_ONLINE;
+	}
+}
+
+/**
+  * @brief          å•ç”µæœºåˆå§‹åŒ–
+  * @param[in]      Motor_HT_t *motor     ç”µæœºæœ¬ä½“
+  * @retval         none
+  */
+void HT_Single_Motor_Init(Motor_HT_t *motor)
+{
+	motor->state->mode = Motor_UnControl;
+	motor->single_sleep = HT_Single_Motor_Sleep;
+	motor->zero_position = HT_Single_Motor_ZeroPosSensor;
+	motor->single_set_torque = HT_Single_Motor_Set_Torque;
+	motor->single_set_speed  = HT_Single_Motor_Set_Speed;
+	motor->single_set_angle  = HT_Single_Motor_Set_Angle;
+	motor->rx = Motor_ReceiveData;
+	motor->single_heart_beat = HT_Motor_Hearbeat;
+	/*å¼€å¯ç”µæœºæ§åˆ¶*/
+	motor->single_sleep(motor);
+	motor->state->offline_cnt_max = 500;
+	motor->rx_info->motor_angle_sum = 0;
+}
+
+/*..........................................å¤šç”µæœº..........................................*/
+
+/**
+  * @brief          å¤šç”µæœºï¼ˆ1~4ä¸ªï¼‰ç”µæœºæ§åˆ¶è¾“å‡ºè½¬çŸ©,4ä¸ªç”µæœºå¿…é¡»ä¸ºåŒä¸€ç±»å‹ï¼›å«æœ‰CANå‘é€æ“ä½œ
+  * @param[in]      Motor_HT_Group_t *group     ç”µæœºç»„
+  * @retval         none
+  */
+static void Group_Motor_Set_Torque(Motor_HT_Group_t *group)
+{	
+	
+		if(group->motor[0] != NULL)
+		{
+			group->motor[0]->single_set_angle(group->motor[0]);
+		}
+		if(group->motor[1] != NULL)
+		{
+			group->motor[1]->single_set_angle(group->motor[1]);
+		}
+		if(group->motor[2] != NULL)
+		{
+			group->motor[2]->single_set_angle(group->motor[2]);
+		}
+		if(group->motor[3] != NULL)
+		{
+			group->motor[3]->single_set_angle(group->motor[3]);
+		}
+}
+
+/**
+  * @brief          å¤šç”µæœºï¼ˆ1~4ä¸ªï¼‰ç”µæœºæ§åˆ¶å¸åŠ›ï¼›ä¸å«æœ‰CANå‘é€æ“ä½œ
+  * @param[in]      Motor_HT_Group_t *group     ç”µæœºç»„
+  * @retval         none
+  */
+static void Group_Motor_Sleep(Motor_HT_Group_t *group)
+{	
+		if(group->motor[0] != NULL)
+		{
+			group->motor[0]->single_sleep(group->motor[0]);
+		}
+		if(group->motor[1] != NULL)
+		{
+			group->motor[1]->single_sleep(group->motor[1]);
+		}
+		if(group->motor[2] != NULL)
+		{
+			group->motor[2]->single_sleep(group->motor[2]);
+		}
+		if(group->motor[3] != NULL)
+		{
+			group->motor[3]->single_sleep(group->motor[3]);
+		}
+}
+
+/**
+  * @brief          ç”µæœºç»„å¿ƒè·³åŒ…
+  * @param[in]      Motor_HT_Group_t *group     ç”µæœºç»„
+  * @retval         none
+  */
+static void Group_Motor_Heartbeat(Motor_HT_Group_t *group)
+{
+	if(group->motor[0] != NULL)
+	{
+		group->motor[0]->single_heart_beat(group->motor[0]);
+	}
+	  
+	if(group->motor[1] != NULL)
+	{
+		group->motor[1]->single_heart_beat(group->motor[1]);
+	}
+
+  if(group->motor[2] != NULL)
+	{
+		group->motor[2]->single_heart_beat(group->motor[2]);
+	}
+	  
+	if(group->motor[3] != NULL)
+	{
+		group->motor[3]->single_heart_beat(group->motor[3]);
+	}
+}
+
+
+/**
+  * @brief          ç”µæœºç»„åˆå§‹åŒ–
+  * @param[in]      Motor_HT_Group_t *group     ç”µæœºç»„
+  * @retval         none
+  */
+void HT_Group_Motor_Init(Motor_HT_Group_t *group)
+{
+	  if(group->motor[0] != NULL)
+		{
+			group->motor[0]->single_init = HT_Single_Motor_Init;
+	    group->motor[0]->single_init(group->motor[0]);
+		}
+	  
+		if(group->motor[1] != NULL)
+		{
+			group->motor[1]->single_init = HT_Single_Motor_Init;
+	    group->motor[1]->single_init(group->motor[1]);
+		}
+
+    if(group->motor[2] != NULL)
+		{
+			group->motor[2]->single_init = HT_Single_Motor_Init;
+	    group->motor[2]->single_init(group->motor[2]);
+		}
+	  
+		if(group->motor[3] != NULL)
+		{
+			group->motor[3]->single_init = HT_Single_Motor_Init;
+	    group->motor[3]->single_init(group->motor[3]);
+		}
+	  
+	
+	  group->group_set_torque = Group_Motor_Set_Torque;
+		group->group_heartbeat = Group_Motor_Heartbeat;
+	  group->group_sleep = Group_Motor_Sleep;
+}
+
+/*..........................................å·¥å…·å‡½æ•°..........................................*/
+/**
+  * @brief          æ•´åˆå¹¶å‘é€ç”µæœºå‘½ä»¤æŠ¥æ–‡
+  * @param          Motor_HT_t *motor
+  * @param[in]      Motor_HT_Command_e Command
+  * @retval         none
+  */
+static void Motor_Send_Command(Motor_HT_t *motor, Motor_MIT_Command_e Command)
+{
+	switch(Command)
+	{
+		case Enter_Motor_Mode:
+		Motor_Command[7] = 0xFC;
+		break;
+		case Exit_Motor_Mode:
+		Motor_Command[7] = 0xFD;
+		break;
+		case Zero_Position_Sensor:
+		Motor_Command[7] = 0xFE;
+		break;
+		default:
+		break;
+	}
+	Motor_Send_Data(motor, Motor_Command);
+}
+
+/**
+  * @brief          æ ¹æ®ç»“æ„ä½“ä¿¡æ¯å‘é€æŠ¥æ–‡
+  * @param          Motor_HT_t *motor
+  * @param          uint8_t* buf è¦å‘é€çš„æŠ¥æ–‡ä¿¡æ¯
+  * @retval         none
+  */
+static void Motor_Send_Data(Motor_HT_t *motor, uint8_t* buf)
+{
+	Motor_HT_Born_Info_t* motor_born_info = motor->born_info;
+	
+	CAN_SendData(motor_born_info->hcan, motor_born_info->stdId, buf);
+}
+
+/**
+  * @brief          æ ¹æ®å‘é€çš„æŠ¥æ–‡ä¿¡æ¯è®¾ç½®æŠ¥æ–‡
+  * @param          Motor_HT_t *motor
+  * @retval         none
+  */
+static void HT_Motor_SetControlPara(Motor_HT_t *motor)
+{
+	Motor_HT_Tx_Info_t* motor_tx_info = motor->tx_info;
+	uint16_t p, v, kp, kd, t;
+  uint8_t* buf = motor_tx_info->single_tx_buff;
+	
+	/* é™åˆ¶è¾“å…¥çš„å‚æ•°åœ¨å®šä¹‰çš„èŒƒå›´å†… */
+	motor_tx_info->target_angle = constrain(motor_tx_info->target_angle, HT_P_MIN, HT_P_MAX);
+	motor_tx_info->target_speed = constrain(motor_tx_info->target_speed, HT_V_MIN, HT_V_MAX);
+	motor_tx_info->Kp = constrain(motor_tx_info->Kp, HT_KP_MIN, HT_KP_MAX);
+	motor_tx_info->Kd = constrain(motor_tx_info->Kd, HT_KD_MIN, HT_KD_MAX);
+	motor_tx_info->torque = constrain(motor_tx_info->torque, -8, 8);
+	
+	/* æ ¹æ®åè®®ï¼Œå¯¹floatå‚æ•°è¿›è¡Œè½¬æ¢ */
+	p = float_to_uint(motor_tx_info->target_angle,      HT_P_MIN,  HT_P_MAX,  16);            
+	v = float_to_uint(motor_tx_info->target_speed,      HT_V_MIN,  HT_V_MAX,  12);
+	kp = float_to_uint(motor_tx_info->Kp,    HT_KP_MIN, HT_KP_MAX, 12);
+	kd = float_to_uint(motor_tx_info->Kd,    HT_KD_MIN, HT_KD_MAX, 12);
+	t = float_to_uint(motor_tx_info->torque,      HT_T_MIN,  HT_T_MAX,  12);
+	
+	/* æ ¹æ®ä¼ è¾“åè®®ï¼ŒæŠŠæ•°æ®è½¬æ¢ä¸ºCANå‘½ä»¤æ•°æ®å­—æ®µ */
+	buf[0] = p>>8;
+	buf[1] = p&0xFF;
+	buf[2] = v>>4;
+	buf[3] = ((v&0xF)<<4)|(kp>>8);
+	buf[4] = kp&0xFF;
+	buf[5] = kd>>4;
+	buf[6] = ((kd&0xF)<<4)|(t>>8);
+	buf[7] = t&0xff;
+}
+
+/**
+  * @brief  å°†floatè½¬ä¸ºuintï¼Œå¹¶å¯¹æ­£è´Ÿåšå¤„ç†,ä¸é€šä¿¡åè®®ä¿æŒä¸€è‡´
+  * @param
+  * @retval 
+  */
+static uint16_t float_to_uint_(float x, float x_min, float x_max, uint8_t bits)
+{
+    float span = x_max - x_min;
+    float offset = x_min;
+    
+    return (uint16_t) ((x-offset)*((float)((1<<bits)-1))/span);
+}
+
+/**
+  * @brief  å°†uintè½¬ä¸ºfloatï¼Œå¹¶å¯¹æ­£è´Ÿåšå¤„ç†
+  * @param
+  * @retval 
+  */
+static float uint_to_float_(uint16_t x_int, float x_min, float x_max, uint8_t bits)
+{
+    float span = x_max - x_min;
+    float offset = x_min;
+    return ((float)x_int)*span/((float)((1<<bits)-1)) + offset;
+}
+
+
+/**
+  * @brief          å°†ç¼–ç å™¨å€¼è½¬åŒ–ä¸ºå¼§åº¦åˆ¶(0~2PI)
+  * @param[in]      Motor_Ktech_t *motor     ç”µæœºæœ¬ä½“
+  * @retval         none
+  */
+static void Encoder_to_Motor_Angle(Motor_HT_t *motor)
+{
+	float order_correction = 0.f;
+	
+	if(motor->born_info->order_correction == 1 || motor->born_info->order_correction == -1)
+	{
+		order_correction = (float)motor->born_info->order_correction;
+	}
+	else
+	{
+		order_correction = 1.f;
+	}
+	
+	//è¿‡ç¼–ç å™¨é›¶ç‚¹åˆ¤æ–­
+	if(!motor->rx_info->encoder_last && !motor->rx_info->motor_angle_sum)//ä¸Šä¸€è§’åº¦å€¼ä¸º0ä¸”è§’åº¦å’Œä¸ºé›¶æ—¶ï¼ˆç”µæœºå¯åŠ¨ï¼‰ï¼Œä¸è®¡ç®—è¯¯å·®
+	{
+		motor->rx_info->encoder_err = 0.f;
+	}
+	else
+	{
+		motor->rx_info->encoder_err = -motor->rx_info->encoder_last + motor->rx_info->encoder;
+	}
+	 
+	if(motor->rx_info->encoder_err > 180.f)
+	{
+		motor->rx_info->encoder_err -= 2*HT_P_MAX;
+	}
+	else if(motor->rx_info->encoder_err < -180.f)
+	{
+		motor->rx_info->encoder_err += 2*HT_P_MAX;
+	}
+	
+	motor->rx_info->motor_angle_sum += motor->rx_info->encoder_err * order_correction;
+	motor->rx_info->motor_angle = motor->rx_info->motor_angle_sum - (int16_t)(motor->rx_info->motor_angle_sum / (2.f*PI)) * 2.f * PI;
+	
+	motor->rx_info->encoder_last = motor->rx_info->encoder;
+	
+}
+
+/*ç¤ºä¾‹ä»£ç */
+/*-------------ç”µæœºå˜é‡åˆ›å»º-------------*/
+/*
+
+Motor_HT_Born_Info_t L_Wheel_Born_Info = 
+{	
+	.stdId = 0x009,//ç”µæœºæ§åˆ¶æŠ¥æ–‡ID
+	
+	.hcan = &hcan2,//ä½¿ç”¨çš„Canæ€»çº¿
+	
+	.order_correction = 0,//ç”µæœºæ€»è§’åº¦çš„æ­£æ–¹å‘ä¸ºé¡ºæ—¶é’ˆ
+	
+};
+
+Motor_HT_Rx_Info_t L_Wheel_Rx_Info_t;
+
+Motor_HT_Tx_Info_t L_Wheel_Tx_Info_t;
+
+Motor_HT_State_t L_Wheel_State_t;
+
+Motor_HT_t L_Wheel = 
+{
+	.born_info = &L_Wheel_Born_Info,
+	
+	.rx_info = &L_Wheel_Rx_Info_t,
+	
+	.tx_info = &L_Wheel_Tx_Info_t,
+	
+	.state = &L_Wheel_State_t,
+	
+	.single_init = &HT_Single_Motor_Init,
+*/
+
+/*-------------åˆå§‹åŒ–-------------*/
+/*
+L_Wheel.single_init(&L_Wheel);
+*/
+
+/*-------------æ¥æ”¶å‡½æ•°-------------*/
+/*
+void CAN2_rxDataHandler(uint32_t rxId, uint8_t *rxBuf)
+{
+	switch (rxId)
+	{
+		case 0x000://æ¥æ”¶ID
+		L_Wheel.rx(&L_Wheel, rxBuf);
+		break;
+		default:
+			break;
+	}
+}
+*/
+
+/*-------------ä»»åŠ¡æ‰§è¡Œ-------------*/
+/*
+  * @file    monitor_task.c
+  * @brief   ç›‘æ§ä»»åŠ¡
+  *          1. å„æ¨¡å—å¿ƒè·³å¤±è”æ£€æµ‹
+  *          2. ç›‘æ§é¥æ§å™¨çŠ¶æ€ï¼Œè½¯ä»¶å¤ä½
+void StartMonitorTask(void const * argument)//
+{
+	
+	for(;;)
+	{
+		L_Wheel.heartbeat(&L_Wheel);
+		
+		osDelay(1);
+	}
+}
+
+  * @file    monitor_task.c
+  * @brief   ç”µæœºæ§åˆ¶ä»»åŠ¡
+  *          1. ç»™ç”µæœºå‘é€æ§åˆ¶æŠ¥æ–‡
+  *          2. å¯¹çŠ¶æ€æ ‡å¿—ä½è¿›è¡Œå“åº”
+void StartMonitorTask(void const * argument)//
+{
+	
+	for(;;)
+	{
+		//å‘é€æ§åˆ¶æŠ¥æ–‡ï¼Œæ§åˆ¶ç”µæœºè¾“å‡ºæ‰­çŸ©ä¸º0.5N*m
+		L_Wheel.tx_info->torque = 0.5f;
+		L_Wheel.single_set_torque(&L_Wheel);
+		
+		osDelay(1);
+	}
+}
+
+*/

@@ -1,15 +1,15 @@
-#include "community_task.h"
-
-void StartCommunityTask(void const *argument)
-{
-
-
-	for (;;)
-	{
-
-		rc_sensor.check(&rc_sensor);		//²¦ÂÖ²¦¸ËÌø±äÅĞ¶Ï¡¢Êı¾İÒì³£¼ì²é
-		rc_interrupt_update(&rc_sensor);   //Êó±êÖµ¾ùÖµÂË²¨
-		keyboard_update(rc_sensor.info); // ¼üÊó×´Ì¬¼ì²â
-		osDelay(1);
-	}
-}
+#include "community_task.h"
+
+void StartCommunityTask(void const *argument)
+{
+
+
+	for (;;)
+	{
+
+		rc_sensor.check(&rc_sensor);		//æ‹¨è½®æ‹¨æ†è·³å˜åˆ¤æ–­ã€æ•°æ®å¼‚å¸¸æ£€æŸ¥
+		rc_interrupt_update(&rc_sensor);   //é¼ æ ‡å€¼å‡å€¼æ»¤æ³¢
+		keyboard_update(rc_sensor.info); // é”®é¼ çŠ¶æ€æ£€æµ‹
+		osDelay(1);
+	}
+}

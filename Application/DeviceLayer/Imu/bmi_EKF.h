@@ -1,93 +1,93 @@
-/**
- ******************************************************************************
- * @file    QuaternionEKF.h
- * @author  Wang Hongxi
- * @version V1.2.0
- * @date    2022/3/8
- * @brief   attitude update with gyro bias estimate and chi-square test
- ******************************************************************************
- * @attention
- *
- ******************************************************************************
- */
-#ifndef _BMI_EKF_H
-#define _BMI_EKF_H
-#include "kalman_filter.h"
-
-/* boolean type definitions */
-#ifndef TRUE
-#define TRUE 1 /**< boolean true  */
-#endif
-
-#ifndef FALSE
-#define FALSE 0 /**< boolean fails */
-#endif
-
-/* ÍÓÂÝÒÇ×ø±ê±ä»»ÎªÔÆÌ¨×ø±ê½á¹¹Ìå */
-typedef struct
-{
-    float arz;
-    float ary;
-    float arx;
-    float trans[9];
-} gimbal_transform_t;
-
-typedef struct
-{
-    uint8_t Initialized;
-    KalmanFilter_t IMU_QuaternionEKF;
-    uint8_t ConvergeFlag;//ÂË²¨Æ÷ÊÇ·ñÊÕÁ²±êÖ¾±äÁ¿
-    uint8_t StableFlag;//ÔË¶¯×´Ì¬ÊÇ·ñÎÈ¶¨±êÖ¾±äÁ¿
-    uint64_t ErrorCount;
-    uint64_t UpdateCount;
-
-    float q[4];        // ËÄÔªÊý¹À¼ÆÖµ
-    float GyroBias[3]; // ÍÓÂÝÒÇÁãÆ«¹À¼ÆÖµ
-
-    float Gyro[3];
-    float Accel[3];
-
-    float OrientationCosine[3];//Ô¤²âÖµºÍ¸÷¸öÖáµÄ·½ÏòÓàÏÒ
-
-    float accLPFcoef;
-    float gyro_norm;
-    float accl_norm;
-    float AdaptiveGainScale;
-
-    float Roll;
-    float Pitch;
-    float Yaw;
-
-    float YawTotalAngle;
-
-    float Q1; // ËÄÔªÊý¸üÐÂ¹ý³ÌÔëÉù
-    float Q2; // ÍÓÂÝÒÇÁãÆ«¹ý³ÌÔëÉù
-    float R;  // ¼ÓËÙ¶È¼ÆÁ¿²âÔëÉù
-
-    float dt; // ×ËÌ¬¸üÐÂÖÜÆÚ
-    mat ChiSquare;
-    float ChiSquare_Data[1];      // ¿¨·½¼ìÑé¼ì²âº¯Êý
-    float ChiSquareTestThreshold; // ¿¨·½¼ìÑéãÐÖµ
-    float lambda;                 // ½¥ÏûÒò×Ó
-
-    int16_t YawRoundCount;
-
-    float YawAngleLast;
-} QEKF_INS_t;
-
-extern gimbal_transform_t EKFgim_trans;
-extern QEKF_INS_t QEKF_INS;
-extern float chiSquare;
-extern float ChiSquareTestThreshold;
-void IMU_QuaternionEKF_Init(float* init_quaternion,float process_noise1, float process_noise2, float measure_noise, float lambda);
-void IMU_QuaternionEKF_Update(float gx, float gy, float gz, float ax, float ay, float az, float dt);
-void transform_init(gimbal_transform_t *gim_trans);
-void Vector_Transform(float gx, float gy, float gz,\
-	                  float ax, float ay, float az,\
-	                  float *ggx, float *ggy, float *ggz,\
-					  float *aax, float *aay, float *aaz);
-void BMI_Get_Acceleration(float pitch, float roll, float yaw,\
-						  float ax, float ay, float az,\
-						  float *accx, float *accy, float *accz);
-
-#endif
+/**
+ ******************************************************************************
+ * @file    QuaternionEKF.h
+ * @author  Wang Hongxi
+ * @version V1.2.0
+ * @date    2022/3/8
+ * @brief   attitude update with gyro bias estimate and chi-square test
+ ******************************************************************************
+ * @attention
+ *
+ ******************************************************************************
+ */
+#ifndef _BMI_EKF_H
+#define _BMI_EKF_H
+#include "kalman_filter.h"
+
+/* boolean type definitions */
+#ifndef TRUE
+#define TRUE 1 /**< boolean true  */
+#endif
+
+#ifndef FALSE
+#define FALSE 0 /**< boolean fails */
+#endif
+
+/* é™€èžºä»ªåæ ‡å˜æ¢ä¸ºäº‘å°åæ ‡ç»“æž„ä½“ */
+typedef struct
+{
+    float arz;
+    float ary;
+    float arx;
+    float trans[9];
+} gimbal_transform_t;
+
+typedef struct
+{
+    uint8_t Initialized;
+    KalmanFilter_t IMU_QuaternionEKF;
+    uint8_t ConvergeFlag;//æ»¤æ³¢å™¨æ˜¯å¦æ”¶æ•›æ ‡å¿—å˜é‡
+    uint8_t StableFlag;//è¿åŠ¨çŠ¶æ€æ˜¯å¦ç¨³å®šæ ‡å¿—å˜é‡
+    uint64_t ErrorCount;
+    uint64_t UpdateCount;
+
+    float q[4];        // å››å…ƒæ•°ä¼°è®¡å€¼
+    float GyroBias[3]; // é™€èžºä»ªé›¶åä¼°è®¡å€¼
+
+    float Gyro[3];
+    float Accel[3];
+
+    float OrientationCosine[3];//é¢„æµ‹å€¼å’Œå„ä¸ªè½´çš„æ–¹å‘ä½™å¼¦
+
+    float accLPFcoef;
+    float gyro_norm;
+    float accl_norm;
+    float AdaptiveGainScale;
+
+    float Roll;
+    float Pitch;
+    float Yaw;
+
+    float YawTotalAngle;
+
+    float Q1; // å››å…ƒæ•°æ›´æ–°è¿‡ç¨‹å™ªå£°
+    float Q2; // é™€èžºä»ªé›¶åè¿‡ç¨‹å™ªå£°
+    float R;  // åŠ é€Ÿåº¦è®¡é‡æµ‹å™ªå£°
+
+    float dt; // å§¿æ€æ›´æ–°å‘¨æœŸ
+    mat ChiSquare;
+    float ChiSquare_Data[1];      // å¡æ–¹æ£€éªŒæ£€æµ‹å‡½æ•°
+    float ChiSquareTestThreshold; // å¡æ–¹æ£€éªŒé˜ˆå€¼
+    float lambda;                 // æ¸æ¶ˆå› å­
+
+    int16_t YawRoundCount;
+
+    float YawAngleLast;
+} QEKF_INS_t;
+
+extern gimbal_transform_t EKFgim_trans;
+extern QEKF_INS_t QEKF_INS;
+extern float chiSquare;
+extern float ChiSquareTestThreshold;
+void IMU_QuaternionEKF_Init(float* init_quaternion,float process_noise1, float process_noise2, float measure_noise, float lambda);
+void IMU_QuaternionEKF_Update(float gx, float gy, float gz, float ax, float ay, float az, float dt);
+void transform_init(gimbal_transform_t *gim_trans);
+void Vector_Transform(float gx, float gy, float gz,\
+	                  float ax, float ay, float az,\
+	                  float *ggx, float *ggy, float *ggz,\
+					  float *aax, float *aay, float *aaz);
+void BMI_Get_Acceleration(float pitch, float roll, float yaw,\
+						  float ax, float ay, float az,\
+						  float *accx, float *accy, float *accz);
+
+#endif

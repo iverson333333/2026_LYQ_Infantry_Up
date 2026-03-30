@@ -1,175 +1,175 @@
-/**
- * @file        rp_math.c
- * @author      RobotPilots
- * @Version     v1.1
- * @brief       RobotPilots Robots' Math Libaray.
- * @update
- *              v1.0(11-September-2020)
- *              v1.1(13-November-2021)
- *                  1.‘ˆº”Œª≤Ÿ◊˜∫Ø ˝
- */
-
-/* Includes ------------------------------------------------------------------*/
-#include "rp_math.h"
-
-/* Private macro -------------------------------------------------------------*/
-/* Private function prototypes -----------------------------------------------*/
-/* Private typedef -----------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-/* Exported variables --------------------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
-/* Exported functions --------------------------------------------------------*/
-
-/*∏°µ„ ˝œﬂ–‘”≥…‰≥…’˚ ˝*/
-int float_to_uint(float x, float x_min, float x_max, int bits){
- /// Converts a float to an unsigned int, given range and number of bits
-///
-	float span = x_max - x_min;
-  float offset = x_min;
-	 return (int) ((x-offset)*((float)((1<<bits)-1))/span);
-}
-
-/*’˚ ˝œﬂ–‘”≥…‰≥…∏°µ„ ˝*/
-float uint_to_float(int x_int, float x_min, float x_max, int bits){
- /// converts unsigned int to float, given range and number of bits ///
- float span = x_max - x_min;
- float offset = x_min;
- return ((float)x_int)*span/((float)((1<<bits)-1)) + offset;
- }
-
-/**
-  * @brief  øÏÀŸø™∑Ω
-  * @param  
-  * @retval 
-  */
-float my_sqrt(float num)
-{
-    float halfnum = 0.5f * num;
-    float y = num;
-    long i = *(long *)&y;
-    i = 0x5f3759df - (i >> 1);
-    y = *(float *)&i;
-    y = y * (1.5f - (halfnum * y * y));
-    return y;
-}
-
-
-/**
- * @brief  µÕÕ®¬À≤®,K° (0,1)£¨K ‘Ω¥Û£¨¬À≤®–ßπ˚‘Ω»ı
- * @param  …œ¥Œµƒ¬À≤® ‰≥ˆX_last  £¨–¬µƒ ‰»ÎX_new £¨¬À≤®œµ ˝K
- * @return  ¬À≤®∫Û ˝÷µ
- */
-float Lowpass(float X_last, float X_new, float K)
-{
-	return (X_last + (X_new - X_last) * K);
-}
-
-/**
- *	@brief	π˝∞Î»¶¥¶¿Ì angle£∫‘¥ ˝æ› cycle: ˝æ›∑∂Œß
- */
-float motor_half_cycle(float angle, float max)
-{
-	if (my_abs(angle) > (max / 2))
-	{
-		if (angle >= 0)
-			angle += -max;
-		else
-			angle += max;
-	}
-	return angle;
-}
-
-int16_t RampInt(int16_t final, int16_t now, int16_t ramp)
-{
-	int32_t buffer = 0;
-
-	buffer = final - now;
-	if (buffer > 0)
-	{
-		if (buffer > ramp)
-			now += ramp;
-		else
-			now += buffer;
-	}
-	else
-	{
-		if (buffer < -ramp)
-			now += -ramp;
-		else
-			now += buffer;
-	}
-
-	return now;
-}
-
-float RampFloat(float final, float now, float ramp)
-{
-	float buffer = 0;
-
-	buffer = final - now;
-	if (buffer > 0)
-	{
-		if (buffer > ramp)
-			now += ramp;
-		else
-			now += buffer;
-	}
-	else
-	{
-		if (buffer < -ramp)
-			now += -ramp;
-		else
-			now += buffer;
-	}
-
-	return now;
-}
-
-
-
-
-float DeathZoom(float input, float center, float death)
-{
-	if (my_abs(input - center) < death)
-		return center;
-	return input;
-}
-/**
-  * @name   Time_Trigger_inloop
-  * @brief  ‘⁄—≠ª∑¿Ô∂® ±¥•∑¢
-  * @note   ¢Ÿ–Ë“™Õ‚≤ø∂®“Â±‰¡ø¥Ê ±º‰°¢µ⁄“ª¥Œ≤ª÷±Ω”¥•∑¢±Í÷æŒª,∑¿÷π∂‡¥¶µ˜”√π≤”√ ±º‰ªÚ±Í÷æŒªµº÷¬¥ÌŒÛ
-  *         ¢⁄“™√¥◊‘º∫Õ‚≤ø«Â±Í÷æŒª£¨“™√¥÷¥––µƒƒ⁄»›“™ΩÙ∏˙’‚∏ˆ∫Ø ˝∫Û√Ê£¨≤ª»ª»›“◊¥Ìπ˝¥•∑¢ ±º‰
-  *         ¢€*ignore_first_trigger_flag–Ë“™≥ı ºŒ™0
-			 ¢‹*ignore_first_trigger_flag ÕÀ≥ˆ≥§∞¥∫Û“™«Â¡„
-  * @param  private_flag: ±Í÷æŒª÷∏’Î£¨”√”⁄÷∏ æ «∑Ò¥•∑¢£®1Œ™¥•∑¢£©
-  * @param  last_trigger_tick: ”√”⁄¥Ê¥¢…œ¥Œ¥•∑¢µƒ ±º‰£®Õ‚≤ø±‰¡ø£¨–Ë≥ı ºªØŒ™0£©
-  * @param  ignore_first_trigger_flag:  «∑Ò∫ˆ¬‘µ⁄“ª¥Œ¥•∑¢µƒ±Í÷æŒª£®Õ‚≤ø±‰¡ø£¨–Ë≥ı ºªØŒ™0,ÕÀ≥ˆ≥§∞¥∫Û“™«Â¡„£©
-  * @param  delay_tick: ¥•∑¢µƒ ±º‰º‰∏Ù£®µ•Œª£∫∫¡√Î£©
-  * @param  if_ignore_first:  «∑Ò∫ˆ¬‘µ⁄“ª¥Œ¥•∑¢£®1Œ™∫ˆ¬‘£¨0Œ™≤ª∫ˆ¬‘£©
-  * @author HERMIT_PURPLE
-  */
-void Time_Trigger_inloop(Time_trigger_t *Time_trigger_struct)
-{
-	if (Time_trigger_struct->private_flag == NULL || Time_trigger_struct->last_trigger_tick == NULL || Time_trigger_struct->ignore_first_trigger_flag == NULL)
-	{
-		return;
-	}
-
-	// »Áπ˚Ω¯¿¥’‚∏ˆ∫Ø ˝≤ª÷±Ω”¥•∑¢“ª¥Œ,æÕœ»∏≥÷µ“ª¥Œ…œ¥Œµƒ ±º‰
-	if (Time_trigger_struct->if_ignore_first == 1 && Time_trigger_struct->ignore_first_trigger_flag == 0)
-	{
-		*Time_trigger_struct->ignore_first_trigger_flag = 1;
-		*Time_trigger_struct->last_trigger_tick = HAL_GetTick();
-	}
-
-	if ((HAL_GetTick() - *Time_trigger_struct->last_trigger_tick > Time_trigger_struct->delay_tick) && (Time_trigger_struct->ignore_first_trigger_flag != 0 || Time_trigger_struct->if_ignore_first == 0))
-	{
-		*Time_trigger_struct->private_flag = 1;
-		*Time_trigger_struct->last_trigger_tick = HAL_GetTick();
-	}
-	/*ƒ⁄≤ø«Â±Í÷æŒª*/
-	else
-	{
-		*Time_trigger_struct->private_flag = Time_trigger_struct->flag_before_trigger;
-	}
-}
+/**
+ * @file        rp_math.c
+ * @author      RobotPilots
+ * @Version     v1.1
+ * @brief       RobotPilots Robots' Math Libaray.
+ * @update
+ *              v1.0(11-September-2020)
+ *              v1.1(13-November-2021)
+ *                  1.Â¢ûÂä†‰ΩçÊìç‰ΩúÂáΩÊï∞
+ */
+
+/* Includes ------------------------------------------------------------------*/
+#include "rp_math.h"
+
+/* Private macro -------------------------------------------------------------*/
+/* Private function prototypes -----------------------------------------------*/
+/* Private typedef -----------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+/* Exported variables --------------------------------------------------------*/
+/* Private functions ---------------------------------------------------------*/
+/* Exported functions --------------------------------------------------------*/
+
+/*ÊµÆÁÇπÊï∞Á∫øÊÄßÊò†Â∞ÑÊàêÊï¥Êï∞*/
+int float_to_uint(float x, float x_min, float x_max, int bits){
+ /// Converts a float to an unsigned int, given range and number of bits
+///
+	float span = x_max - x_min;
+  float offset = x_min;
+	 return (int) ((x-offset)*((float)((1<<bits)-1))/span);
+}
+
+/*Êï¥Êï∞Á∫øÊÄßÊò†Â∞ÑÊàêÊµÆÁÇπÊï∞*/
+float uint_to_float(int x_int, float x_min, float x_max, int bits){
+ /// converts unsigned int to float, given range and number of bits ///
+ float span = x_max - x_min;
+ float offset = x_min;
+ return ((float)x_int)*span/((float)((1<<bits)-1)) + offset;
+ }
+
+/**
+  * @brief  Âø´ÈÄüÂºÄÊñπ
+  * @param  
+  * @retval 
+  */
+float my_sqrt(float num)
+{
+    float halfnum = 0.5f * num;
+    float y = num;
+    long i = *(long *)&y;
+    i = 0x5f3759df - (i >> 1);
+    y = *(float *)&i;
+    y = y * (1.5f - (halfnum * y * y));
+    return y;
+}
+
+
+/**
+ * @brief  ‰ΩéÈÄöÊª§Ê≥¢,K‚àà(0,1)ÔºåK Ë∂äÂ§ßÔºåÊª§Ê≥¢ÊïàÊûúË∂äÂº±
+ * @param  ‰∏äÊ¨°ÁöÑÊª§Ê≥¢ËæìÂá∫X_last  ÔºåÊñ∞ÁöÑËæìÂÖ•X_new ÔºåÊª§Ê≥¢Á≥ªÊï∞K
+ * @return  Êª§Ê≥¢ÂêéÊï∞ÂÄº
+ */
+float Lowpass(float X_last, float X_new, float K)
+{
+	return (X_last + (X_new - X_last) * K);
+}
+
+/**
+ *	@brief	ËøáÂçäÂúàÂ§ÑÁêÜ angleÔºöÊ∫êÊï∞ÊçÆ cycle:Êï∞ÊçÆËåÉÂõ¥
+ */
+float motor_half_cycle(float angle, float max)
+{
+	if (my_abs(angle) > (max / 2))
+	{
+		if (angle >= 0)
+			angle += -max;
+		else
+			angle += max;
+	}
+	return angle;
+}
+
+int16_t RampInt(int16_t final, int16_t now, int16_t ramp)
+{
+	int32_t buffer = 0;
+
+	buffer = final - now;
+	if (buffer > 0)
+	{
+		if (buffer > ramp)
+			now += ramp;
+		else
+			now += buffer;
+	}
+	else
+	{
+		if (buffer < -ramp)
+			now += -ramp;
+		else
+			now += buffer;
+	}
+
+	return now;
+}
+
+float RampFloat(float final, float now, float ramp)
+{
+	float buffer = 0;
+
+	buffer = final - now;
+	if (buffer > 0)
+	{
+		if (buffer > ramp)
+			now += ramp;
+		else
+			now += buffer;
+	}
+	else
+	{
+		if (buffer < -ramp)
+			now += -ramp;
+		else
+			now += buffer;
+	}
+
+	return now;
+}
+
+
+
+
+float DeathZoom(float input, float center, float death)
+{
+	if (my_abs(input - center) < death)
+		return center;
+	return input;
+}
+/**
+  * @name   Time_Trigger_inloop
+  * @brief  Âú®Âæ™ÁéØÈáåÂÆöÊó∂Ëß¶Âèë
+  * @note   ‚ë†ÈúÄË¶ÅÂ§ñÈÉ®ÂÆö‰πâÂèòÈáèÂ≠òÊó∂Èó¥„ÄÅÁ¨¨‰∏ÄÊ¨°‰∏çÁõ¥Êé•Ëß¶ÂèëÊ†áÂøó‰Ωç,Èò≤Ê≠¢Â§öÂ§ÑË∞ÉÁî®ÂÖ±Áî®Êó∂Èó¥ÊàñÊ†áÂøó‰ΩçÂØºËá¥ÈîôËØØ
+  *         ‚ë°Ë¶Å‰πàËá™Â∑±Â§ñÈÉ®Ê∏ÖÊ†áÂøó‰ΩçÔºåË¶Å‰πàÊâßË°åÁöÑÂÜÖÂÆπË¶ÅÁ¥ßË∑üËøô‰∏™ÂáΩÊï∞ÂêéÈù¢Ôºå‰∏çÁÑ∂ÂÆπÊòìÈîôËøáËß¶ÂèëÊó∂Èó¥
+  *         ‚ë¢*ignore_first_trigger_flagÈúÄË¶ÅÂàùÂßã‰∏∫0
+			 ‚ë£*ignore_first_trigger_flag ÈÄÄÂá∫ÈïøÊåâÂêéË¶ÅÊ∏ÖÈõ∂
+  * @param  private_flag: Ê†áÂøó‰ΩçÊåáÈíàÔºåÁî®‰∫éÊåáÁ§∫ÊòØÂê¶Ëß¶ÂèëÔºà1‰∏∫Ëß¶ÂèëÔºâ
+  * @param  last_trigger_tick: Áî®‰∫éÂ≠òÂÇ®‰∏äÊ¨°Ëß¶ÂèëÁöÑÊó∂Èó¥ÔºàÂ§ñÈÉ®ÂèòÈáèÔºåÈúÄÂàùÂßãÂåñ‰∏∫0Ôºâ
+  * @param  ignore_first_trigger_flag: ÊòØÂê¶ÂøΩÁï•Á¨¨‰∏ÄÊ¨°Ëß¶ÂèëÁöÑÊ†áÂøó‰ΩçÔºàÂ§ñÈÉ®ÂèòÈáèÔºåÈúÄÂàùÂßãÂåñ‰∏∫0,ÈÄÄÂá∫ÈïøÊåâÂêéË¶ÅÊ∏ÖÈõ∂Ôºâ
+  * @param  delay_tick: Ëß¶ÂèëÁöÑÊó∂Èó¥Èó¥ÈöîÔºàÂçï‰ΩçÔºöÊØ´ÁßíÔºâ
+  * @param  if_ignore_first: ÊòØÂê¶ÂøΩÁï•Á¨¨‰∏ÄÊ¨°Ëß¶ÂèëÔºà1‰∏∫ÂøΩÁï•Ôºå0‰∏∫‰∏çÂøΩÁï•Ôºâ
+  * @author HERMIT_PURPLE
+  */
+void Time_Trigger_inloop(Time_trigger_t *Time_trigger_struct)
+{
+	if (Time_trigger_struct->private_flag == NULL || Time_trigger_struct->last_trigger_tick == NULL || Time_trigger_struct->ignore_first_trigger_flag == NULL)
+	{
+		return;
+	}
+
+	// Â¶ÇÊûúËøõÊù•Ëøô‰∏™ÂáΩÊï∞‰∏çÁõ¥Êé•Ëß¶Âèë‰∏ÄÊ¨°,Â∞±ÂÖàËµãÂÄº‰∏ÄÊ¨°‰∏äÊ¨°ÁöÑÊó∂Èó¥
+	if (Time_trigger_struct->if_ignore_first == 1 && Time_trigger_struct->ignore_first_trigger_flag == 0)
+	{
+		*Time_trigger_struct->ignore_first_trigger_flag = 1;
+		*Time_trigger_struct->last_trigger_tick = HAL_GetTick();
+	}
+
+	if ((HAL_GetTick() - *Time_trigger_struct->last_trigger_tick > Time_trigger_struct->delay_tick) && (Time_trigger_struct->ignore_first_trigger_flag != 0 || Time_trigger_struct->if_ignore_first == 0))
+	{
+		*Time_trigger_struct->private_flag = 1;
+		*Time_trigger_struct->last_trigger_tick = HAL_GetTick();
+	}
+	/*ÂÜÖÈÉ®Ê∏ÖÊ†áÂøó‰Ωç*/
+	else
+	{
+		*Time_trigger_struct->private_flag = Time_trigger_struct->flag_before_trigger;
+	}
+}

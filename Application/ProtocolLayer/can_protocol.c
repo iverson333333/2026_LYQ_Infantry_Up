@@ -3,7 +3,7 @@
 #include "motor.h"
 #include "communicate.h"
 /**
- *  @brief  CAN1 接收数据
+ *  @brief  CAN1 鎺ユ敹鏁版嵁
  */
 void CAN1_rxDataHandler(uint32_t rxId, uint8_t *rxBuf)
 {
@@ -26,7 +26,7 @@ void CAN1_rxDataHandler(uint32_t rxId, uint8_t *rxBuf)
 	}
 }
 /**
- *  @brief  CAN2 接收数据
+ *  @brief  CAN2 鎺ユ敹鏁版嵁
  */
 void CAN2_rxDataHandler(uint32_t canId, uint8_t *rxBuf)
 {

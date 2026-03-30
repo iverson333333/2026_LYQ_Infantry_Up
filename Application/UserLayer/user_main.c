@@ -1,127 +1,127 @@
-/**
- * @file        user_main.c
- * @author      SSDCFXB
- * @Version     V1.0
- * @date        18-November-2022
- * @brief       User Main
- * @update
- */
-
-/* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx_hal.h"
-#include "tim.h"
-
-#include "user_main.h"
-/* Private macro -------------------------------------------------------------*/
-/* Private function prototypes -----------------------------------------------*/
-/* Private typedef -----------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-/* Exported variables --------------------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
-void user_main(void);
-/* Exported functions --------------------------------------------------------*/
-
-/**
- *	@brief	ÓÃ»§Éè±¸³õÊ¼»¯(Init)
- */
-void USER_Init(void)
-{
-	motor_all_init();
-	HAL_TIM_Base_Init(&htim4);
-	HAL_TIM_Base_Start_IT(&htim4);
-	launcher.init();
-}
-
-
-/**
- *	@brief	ÓÃ»§Ó¦ÓÃ²ã£¬1msÖ´ĞĞÒ»´Î(Loop)
- */
-void user_main(void)
-{
-	//µç»úĞÄÌø£¬ÓÃÓÚÅĞ¶ÏÊÇ·ñÊ§Áª
-	motor[FRIC_R].heartbeat(&motor[FRIC_R]);
-	motor[FRIC_L].heartbeat(&motor[FRIC_L]);
-	motor[DIAL].heartbeat(&motor[DIAL]);
-	rc_sensor.heart_beat(&rc_sensor);
-	 
-	if (launcher.info->rc_work_state == DEV_ONLINE)
-	{
-		launcher.ctrl();
-	}
-	else
-	{
-		launcher.self_protect();
-	}
-}
-
-
-
-/**
- *	@brief	¶¨Ê±Æ÷ÖĞ¶Ï»Øµ÷£¬1ms½øÈëÒ»´Î
- */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
- if (htim->Instance == TIM4)
- {
-	 static uint16_t i = 0;
-	 
-	 if (++i == 60000)
-	 {
-		 i = 0;
-	 }
-	 
-	 user_main();
-	
- }
-}
-
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
-///*	
-//	·¢ËÍÊı×é
-//*/
-//int16_t send_buff[4];
-//float tar;
-//void StartControlTask(void const * argument)
-//{
-//	
-//	//µç»ú³õÊ¼»¯
-//	motor[GIMB_Y].init(&motor[GIMB_Y]);
-//	//µç»úËÙ¶Èpid³õÊ¼»¯
-//	motor[GIMB_Y].pid_init(&motor[GIMB_Y].pid.speed,gimb_y_speed_pid_param);
-//	
-//  for(;;)
-//  {
-//		//µç»úĞÄÌø£¬ÓÃÓÚÅĞ¶ÏÊÇ·ñÊ§Áª
-//		motor[GIMB_Y].heartbeat(&motor[GIMB_Y]);
-
-////		//pid¼ÆËã
-//		send_buff[motor[GIMB_Y].id.buff_p] = motor[GIMB_Y].c_speed(&motor[GIMB_Y],tar);
-
-
-////		//¿ØÖÆÊı¾İµÄ·¢ËÍ
-//		CAN1_Send_With_int16_to_uint8(motor[GIMB_Y].id.tx_id,send_buff);
-////		
-////		
-//		
-//		
-//    osDelay(1);
-//  }
-
-//}
-
-
-
-
+/**
+ * @file        user_main.c
+ * @author      SSDCFXB
+ * @Version     V1.0
+ * @date        18-November-2022
+ * @brief       User Main
+ * @update
+ */
+
+/* Includes ------------------------------------------------------------------*/
+#include "stm32f4xx_hal.h"
+#include "tim.h"
+
+#include "user_main.h"
+/* Private macro -------------------------------------------------------------*/
+/* Private function prototypes -----------------------------------------------*/
+/* Private typedef -----------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+/* Exported variables --------------------------------------------------------*/
+/* Private functions ---------------------------------------------------------*/
+void user_main(void);
+/* Exported functions --------------------------------------------------------*/
+
+/**
+ *	@brief	ç”¨æˆ·è®¾å¤‡åˆå§‹åŒ–(Init)
+ */
+void USER_Init(void)
+{
+	motor_all_init();
+	HAL_TIM_Base_Init(&htim4);
+	HAL_TIM_Base_Start_IT(&htim4);
+	launcher.init();
+}
+
+
+/**
+ *	@brief	ç”¨æˆ·åº”ç”¨å±‚ï¼Œ1msæ‰§è¡Œä¸€æ¬¡(Loop)
+ */
+void user_main(void)
+{
+	//ç”µæœºå¿ƒè·³ï¼Œç”¨äºåˆ¤æ–­æ˜¯å¦å¤±è”
+	motor[FRIC_R].heartbeat(&motor[FRIC_R]);
+	motor[FRIC_L].heartbeat(&motor[FRIC_L]);
+	motor[DIAL].heartbeat(&motor[DIAL]);
+	rc_sensor.heart_beat(&rc_sensor);
+	 
+	if (launcher.info->rc_work_state == DEV_ONLINE)
+	{
+		launcher.ctrl();
+	}
+	else
+	{
+		launcher.self_protect();
+	}
+}
+
+
+
+/**
+ *	@brief	å®šæ—¶å™¨ä¸­æ–­å›è°ƒï¼Œ1msè¿›å…¥ä¸€æ¬¡
+ */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+ if (htim->Instance == TIM4)
+ {
+	 static uint16_t i = 0;
+	 
+	 if (++i == 60000)
+	 {
+		 i = 0;
+	 }
+	 
+	 user_main();
+	
+ }
+}
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+///*	
+//	å‘é€æ•°ç»„
+//*/
+//int16_t send_buff[4];
+//float tar;
+//void StartControlTask(void const * argument)
+//{
+//	
+//	//ç”µæœºåˆå§‹åŒ–
+//	motor[GIMB_Y].init(&motor[GIMB_Y]);
+//	//ç”µæœºé€Ÿåº¦pidåˆå§‹åŒ–
+//	motor[GIMB_Y].pid_init(&motor[GIMB_Y].pid.speed,gimb_y_speed_pid_param);
+//	
+//  for(;;)
+//  {
+//		//ç”µæœºå¿ƒè·³ï¼Œç”¨äºåˆ¤æ–­æ˜¯å¦å¤±è”
+//		motor[GIMB_Y].heartbeat(&motor[GIMB_Y]);
+
+////		//pidè®¡ç®—
+//		send_buff[motor[GIMB_Y].id.buff_p] = motor[GIMB_Y].c_speed(&motor[GIMB_Y],tar);
+
+
+////		//æ§åˆ¶æ•°æ®çš„å‘é€
+//		CAN1_Send_With_int16_to_uint8(motor[GIMB_Y].id.tx_id,send_buff);
+////		
+////		
+//		
+//		
+//    osDelay(1);
+//  }
+
+//}
+
+
+
+

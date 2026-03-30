@@ -1,291 +1,291 @@
-/**
- * @file vision_protocol.c
- * @author Isaac
- * @brief ÊÓ¾õÍ¨ĞÅĞ­Òé£¬¸ºÔğ½ÓÊÜ·¢ËÍºÍĞÄÌø°ü
- * @version 0.1
- * @date 2023-11-21
- * @copyright Copyright (c) 2023
- *
- */
-#include "car.h"
-#include "vision_protocol.h"
-#include "communicate.h"
-#include "stdbool.h"
-#include "string.h"
-#include "usbd_cdc_if.h"
-#include "usart.h"
-#include "crc.h"
-
-void Vision_TxTime_Calculating(void);
-void Append_Vision_Timing_Buff(uint32_t *vision_timing_buff, uint8_t size, uint16_t delay);
-
-ElectricalToVisionFrame vision_tx_info =
-	{
-		.SOF = 0xA5,	// Ö¡Ê××Ö½Ú
-		.bullet_id = 0, // ³õÊ¼»¯Ê±Îª0
-};
-
-VisionToElectricalFrame vision_rx_info;
-Vision_Timestamp_Info_t vision_timestamp_info;
-Vision_Status_t vision_status =
-	{
-		.offline_cnt_max = VISION_OFFLINE_CNT_MAX,
-		.rx_state = DEV_OFFLINE,
-		.tx_state = DEV_OFFLINE,
-};
-Vision_t vision =
-	{
-		//	.tx_info = &vision_tx_info,
-		//	.rx_info = &vision_rx_info,
-		.EtoV = &vision_tx_info,
-		.VtoE = &vision_rx_info,
-		.timestamp_info = &vision_timestamp_info,
-		.status = &vision_status,
-};
-
-uint8_t vision_txBuf[80];
-
-/**
- * @brief ·¢ËÍÊ±¼ä¼ä¸ô¼ÆËã
- *
- * @param tx_info
- */
-void Vision_TxTime_Calculating(void)
-{
-	static uint32_t last_tick = 0;
-
-	uint32_t tick = HAL_GetTick();				 // ¼ÇÂ¼ÏÖÔÚµÄtickÖµ
-	vision.status->send_time = tick - last_tick; // ¼ÆËã·¢ËÍ¼ä¸ô
-	last_tick = tick;
-}
-
-/**
- * @brief ÊÓ¾õÍ¨ĞÅÊÕ
- * @param rxBuf
- * @return ÊÕµ½Êı¾İ£ºDEV_ONLINE Ã»ÓĞµ½Êı¾İ£ºDEV_OFFLINE
- * @note
- */
-void Vision_DataRx(uint8_t *rxBuf)
-{
-	/* Ö¡Ê××Ö½ÚÊÇ·ñÎª0xA5 */
-	if (rxBuf[0] == 0xA5)
-	{
-		/* Ö¡Í·CRC8Ğ£Ñé*/
-		if (Verify_CRC8_Check_Sum(rxBuf, 6) == true)
-		{
-			/* Ö¡Î²CRC16Ğ£Ñé */
-			if (Verify_CRC16_Check_Sum(rxBuf, sizeof(VisionToElectricalFrame)) == true)
-			{
-				memcpy(&vision_rx_info, rxBuf, sizeof(VisionToElectricalFrame));
-				vision.status->offline_cnt = 0;
-				vision.status->rx_tick = HAL_GetTick(); // ¼ÇÂ¼½ÓÊÜµ½ĞÅÏ¢Ê±µÄÊ±¼ä£¬ºÃÏñÃ»ÓÃµ½
-				// Ìí¼Ó·¢ÉäÊ±¼ä´Á
-				if (vision.VtoE->flag_union.bit.is_enable_shootting == 1)
-				{
-					Append_Vision_Timing_Buff((uint32_t *)vision.timestamp_info->vision_shoot_timing,
-											  sizeof(vision.timestamp_info->vision_shoot_timing) / sizeof(vision_timestamp_info.vision_shoot_timing[0]),
-											  vision.VtoE->timing);
-				}
-			}
-		}
-	}
-}
-
-/**
- * @name    Vision_DataTx
- * @brief   ÊÓ¾õÍ¨ĞÅ·¢(´®¿Ú1)*/
-void Vision_DataTx(UART_HandleTypeDef *huart)
-{
-	memcpy(vision_txBuf, &vision_tx_info, sizeof(ElectricalToVisionFrame)); // ÉèÖÃ·¢ËÍĞÅÏ¢
-	Append_CRC8_Check_Sum(vision_txBuf, 6);									// Ìí¼ÓCRC8Ğ£ÑéÂë
-	Append_CRC16_Check_Sum(vision_txBuf, sizeof(ElectricalToVisionFrame));	// Ìí¼ÓCRC16Ğ£ÑéÂë
-
-	if (CDC_Transmit_FS(vision_txBuf, sizeof(ElectricalToVisionFrame)) == USBD_OK) // ´®¿Ú·¢ËÍ
-	{
-		vision.status->tx_state = DEV_ONLINE;
-		Vision_TxTime_Calculating(); // ·¢ËÍÊ±¼ä¼ä¸ô¼ÆËã
-	}
-	else
-	{
-		vision.status->tx_state = DEV_OFFLINE;
-	}
-}
-
-void USART1_rxDataHandler(uint8_t *rxBuf) // ºóĞø»»Ö¸Õë
-{
-	Vision_DataRx(rxBuf);
-}
-/*ÊÓ¾õÉÏ°å¸üĞÂ*/
-void Vision_Board_Update(void)
-{
-	vision.EtoV->flag_union.bit.is_ready = Board_Rx_Info.flag.bit.is_ready_shoot;
-	vision.EtoV->flag_union.bit.own_color = Board_Rx_Info.flag.bit.our_color_flag;
-	//	vision.EtoV->flag_union.bit.game_start = ;
-
-	if(Board_Rx_Info.flag.bit.is_energy_engine_mode == 1)
-	{
-		vision.EtoV->flag_union.bit.energy_engine_mode = 1;
-	}
-	else
-	{
-		vision.EtoV->flag_union.bit.energy_engine_mode = 0;
-	}
-
-
-	vision.EtoV->yaw = Board_Tx_Info.yaw_imu_angle;
-	vision.EtoV->pitch = Board_Tx_Info.pitch_imu_angle; 
-	vision.EtoV->pitch_speed = Board_Tx_Info.pitch_imu_speed;
-	vision.EtoV->yaw_speed = Board_Tx_Info.yaw_imu_speed;
-
-	vision.EtoV->roll = (-imu_sensor.info->base_info.pitch - 0.77);
-	
-}
-
-/**
- * @brief ÔÚ½ÓÊÕµ½µ¯ËÙĞÅÏ¢ºó¸üĞÂÒÑ·¢µ¯ÊıºÍµ¯ËÙ
- *
- */
-// void Vison_Interrupt_Update(void)
-//{
-//   ElectricalToVisionFrame *tx_info = vision.EtoV;
-//	if (1)//.status->rx_state == DEV_ONLINE
-//	{
-//		if (car.car_move_mode == vision_cycle_CAR || car.car_move_mode == vision_gyro_CAR)
-//		{
-//
-//			tx_info->bullet_id++;
-//		}
-//	}
-//////	tx_info->bullet_speed = communicate.shoot_data_rx_info->shooting_speed;
-//}
-
-///**
-// * @brief ´òµ¯ÃüÁîÖ´ĞĞÊ±¼ä¼ÆËã
-// *
-// * @param flag 0£»ÃüÁî¿ªÊ¼Ö´ĞĞ  1£º½ÓÊÕµ½µ¯ËÙ
-// */
-// void Shooting_Cmd_Excute_Tick_Calculating(uint8_t flag)
-//{
-//	static uint32_t cmd_start_tick = 0;
-//	static uint32_t rx_bullet_tick = 0;
-//	static uint8_t rx_bullet_cnt = 0;
-//	static uint8_t reset_cnt_flag = 0;
-//
-//	const uint8_t buf_length = 100;
-//	if (flag == 0)//ÃüÁî¿ªÊ¼Ö´ĞĞ
-//	{
-//		cmd_start_tick = HAL_GetTick();
-//	}
-//	else if (flag == 1)//½ÓÊÕµ½µ¯ËÙ
-//	{
-//		rx_bullet_tick = HAL_GetTick();
-//		vision.shooting_cmd_excute_tick = rx_bullet_tick - cmd_start_tick;
-//		vision.shooting_cmd_excute_tick_buf[rx_bullet_cnt]=vision.shooting_cmd_excute_tick;
-//		#if 1
-//		//ÒÆ¶¯Ö¸Õë
-//		rx_bullet_cnt++;
-//		//»Ø¹éÁãµã
-//		if(rx_bullet_cnt>=buf_length-1)
-//		{
-//			rx_bullet_cnt=0;
-//			reset_cnt_flag=1;
-//		}
-//		//¼ÆËãÆ½¾ùÊı
-//		float shooting_cmd_excute_tick_sum;
-//
-//		if(reset_cnt_flag==1)//Èç¹û»Øµ½Ô­µã¹ı£¬Ö±½Ó±éÀú
-//		{
-//
-//			for(uint8_t i=0;i<buf_length;i++)
-//			{
-//				shooting_cmd_excute_tick_sum+=vision.shooting_cmd_excute_tick_buf[i];
-//			}
-//			vision.shooting_cmd_excute_tick_mean=shooting_cmd_excute_tick_sum/buf_length;
-//		}
-//		else//¶àÉÙ¸ö¾Í¶àÉÙ¸ö
-//		{
-//			for(uint8_t i=0;i<rx_bullet_cnt;i++)
-//			{
-//				shooting_cmd_excute_tick_sum+=vision.shooting_cmd_excute_tick_buf[i];
-//			}
-//			vision.shooting_cmd_excute_tick_mean=shooting_cmd_excute_tick_sum/rx_bullet_cnt;
-//		}
-//		#endif
-//
-//	}
-//}
-
-/**
- * @name    Vision_HearBeat
- * @brief   ÊÓ¾õÍ¨ĞÅĞÄÌø
- * @note    ÓÉ¼à¿ØÈÎÎñµ÷ÓÃ
- */
-void Vision_HearBeat(void)
-{
-	vision.status->offline_cnt++;
-	if (vision.status->offline_cnt >
-		vision.status->offline_cnt_max)
-	{
-		vision.status->offline_cnt =
-			vision.status->offline_cnt_max;
-
-		vision.status->rx_state = DEV_OFFLINE;
-	}
-	else if (vision.status->rx_state == DEV_OFFLINE)
-	{
-		vision.status->rx_state = DEV_ONLINE;
-	}
-}
-/**
- * @name    Append_Vision_Timing_Buff
- * @brief   ½«ÊÓ¾õ·¢¹ıÀ´µÄ·¢ÉäÑÓÊ±×ª»¯ÎªSystemTick£¬²¢·Åµ½Êı×éÀï
- * @note    Vision_DataRxÀïµ÷ÓÃ
- */
-void Append_Vision_Timing_Buff(uint32_t *vision_timing_buff, uint8_t size, uint16_t delay)
-{
-	if (size <= 0)
-	{
-		return; // Èç¹ûÊı×é´óĞ¡Îª0»ò¸ºÊı£¬Ö±½Ó·µ»Ø
-	}
-	if (delay == 0)
-	{
-		delay = 1;
-	}
-	// ½«Ê£ÓàµÄÔªËØÇ°ÒÆÒ»¸ñ
-	for (uint8_t i = 1; i < size; i++)
-	{
-		vision_timing_buff[i - 1] = vision_timing_buff[i];
-	}
-	// ÔÚÊı×éµÄ×îºóÒ»¸öÎ»ÖÃÌí¼ÓĞÎ²ÎµÄÖµ
-	vision_timing_buff[size - 1] = delay + HAL_GetTick();
-}
-/**
- * @name     Vision_led_work
- * @brief    ²»Í¬ÊÓ¾õ×´Ì¬led²»Í¬ÏÔÊ¾
- * @note     ºìµÆÊ§Áª£¬ÂÌµÆÉÁË¸±íÊ¾ÊÕµ½ĞÅÏ¢µ«ÊÇÃ»ÕÒµ½Ä¿±ê£¬ÂÌµÆ³£ÁÁ±íÊ¾ÕÒµ½Ä¿±ê
- */
-void Vision_led_work(void)
-{
-	if (vision.status->rx_state == DEV_OFFLINE)
-	{
-		led.colour = LED_colour_red;
-		led.state = LED_ON;
-	}
-
-	else if (vision.VtoE->flag_union.bit.is_find_target == 1)
-	{
-		led.colour = LED_colour_green;
-		led.state = LED_ON;
-	}
-
-	else if (vision.status->rx_state == DEV_ONLINE)
-	{
-		led.colour = LED_colour_green;
-		led.state = LED_BLINK;
-	}
-
-	else
-	{
-		led.state = LED_OFF;
-	}
-}
+/**
+ * @file vision_protocol.c
+ * @author Isaac
+ * @brief è§†è§‰é€šä¿¡åè®®ï¼Œè´Ÿè´£æ¥å—å‘é€å’Œå¿ƒè·³åŒ…
+ * @version 0.1
+ * @date 2023-11-21
+ * @copyright Copyright (c) 2023
+ *
+ */
+#include "car.h"
+#include "vision_protocol.h"
+#include "communicate.h"
+#include "stdbool.h"
+#include "string.h"
+#include "usbd_cdc_if.h"
+#include "usart.h"
+#include "crc.h"
+
+void Vision_TxTime_Calculating(void);
+void Append_Vision_Timing_Buff(uint32_t *vision_timing_buff, uint8_t size, uint16_t delay);
+
+ElectricalToVisionFrame vision_tx_info =
+	{
+		.SOF = 0xA5,	// å¸§é¦–å­—èŠ‚
+		.bullet_id = 0, // åˆå§‹åŒ–æ—¶ä¸º0
+};
+
+VisionToElectricalFrame vision_rx_info;
+Vision_Timestamp_Info_t vision_timestamp_info;
+Vision_Status_t vision_status =
+	{
+		.offline_cnt_max = VISION_OFFLINE_CNT_MAX,
+		.rx_state = DEV_OFFLINE,
+		.tx_state = DEV_OFFLINE,
+};
+Vision_t vision =
+	{
+		//	.tx_info = &vision_tx_info,
+		//	.rx_info = &vision_rx_info,
+		.EtoV = &vision_tx_info,
+		.VtoE = &vision_rx_info,
+		.timestamp_info = &vision_timestamp_info,
+		.status = &vision_status,
+};
+
+uint8_t vision_txBuf[80];
+
+/**
+ * @brief å‘é€æ—¶é—´é—´éš”è®¡ç®—
+ *
+ * @param tx_info
+ */
+void Vision_TxTime_Calculating(void)
+{
+	static uint32_t last_tick = 0;
+
+	uint32_t tick = HAL_GetTick();				 // è®°å½•ç°åœ¨çš„tickå€¼
+	vision.status->send_time = tick - last_tick; // è®¡ç®—å‘é€é—´éš”
+	last_tick = tick;
+}
+
+/**
+ * @brief è§†è§‰é€šä¿¡æ”¶
+ * @param rxBuf
+ * @return æ”¶åˆ°æ•°æ®ï¼šDEV_ONLINE æ²¡æœ‰åˆ°æ•°æ®ï¼šDEV_OFFLINE
+ * @note
+ */
+void Vision_DataRx(uint8_t *rxBuf)
+{
+	/* å¸§é¦–å­—èŠ‚æ˜¯å¦ä¸º0xA5 */
+	if (rxBuf[0] == 0xA5)
+	{
+		/* å¸§å¤´CRC8æ ¡éªŒ*/
+		if (Verify_CRC8_Check_Sum(rxBuf, 6) == true)
+		{
+			/* å¸§å°¾CRC16æ ¡éªŒ */
+			if (Verify_CRC16_Check_Sum(rxBuf, sizeof(VisionToElectricalFrame)) == true)
+			{
+				memcpy(&vision_rx_info, rxBuf, sizeof(VisionToElectricalFrame));
+				vision.status->offline_cnt = 0;
+				vision.status->rx_tick = HAL_GetTick(); // è®°å½•æ¥å—åˆ°ä¿¡æ¯æ—¶çš„æ—¶é—´ï¼Œå¥½åƒæ²¡ç”¨åˆ°
+				// æ·»åŠ å‘å°„æ—¶é—´æˆ³
+				if (vision.VtoE->flag_union.bit.is_enable_shootting == 1)
+				{
+					Append_Vision_Timing_Buff((uint32_t *)vision.timestamp_info->vision_shoot_timing,
+											  sizeof(vision.timestamp_info->vision_shoot_timing) / sizeof(vision_timestamp_info.vision_shoot_timing[0]),
+											  vision.VtoE->timing);
+				}
+			}
+		}
+	}
+}
+
+/**
+ * @name    Vision_DataTx
+ * @brief   è§†è§‰é€šä¿¡å‘(ä¸²å£1)*/
+void Vision_DataTx(UART_HandleTypeDef *huart)
+{
+	memcpy(vision_txBuf, &vision_tx_info, sizeof(ElectricalToVisionFrame)); // è®¾ç½®å‘é€ä¿¡æ¯
+	Append_CRC8_Check_Sum(vision_txBuf, 6);									// æ·»åŠ CRC8æ ¡éªŒç 
+	Append_CRC16_Check_Sum(vision_txBuf, sizeof(ElectricalToVisionFrame));	// æ·»åŠ CRC16æ ¡éªŒç 
+
+	if (CDC_Transmit_FS(vision_txBuf, sizeof(ElectricalToVisionFrame)) == USBD_OK) // ä¸²å£å‘é€
+	{
+		vision.status->tx_state = DEV_ONLINE;
+		Vision_TxTime_Calculating(); // å‘é€æ—¶é—´é—´éš”è®¡ç®—
+	}
+	else
+	{
+		vision.status->tx_state = DEV_OFFLINE;
+	}
+}
+
+void USART1_rxDataHandler(uint8_t *rxBuf) // åç»­æ¢æŒ‡é’ˆ
+{
+	Vision_DataRx(rxBuf);
+}
+/*è§†è§‰ä¸Šæ¿æ›´æ–°*/
+void Vision_Board_Update(void)
+{
+	vision.EtoV->flag_union.bit.is_ready = Board_Rx_Info.flag.bit.is_ready_shoot;
+	vision.EtoV->flag_union.bit.own_color = Board_Rx_Info.flag.bit.our_color_flag;
+	//	vision.EtoV->flag_union.bit.game_start = ;
+
+	if(Board_Rx_Info.flag.bit.is_energy_engine_mode == 1)
+	{
+		vision.EtoV->flag_union.bit.energy_engine_mode = 1;
+	}
+	else
+	{
+		vision.EtoV->flag_union.bit.energy_engine_mode = 0;
+	}
+
+
+	vision.EtoV->yaw = Board_Tx_Info.yaw_imu_angle;
+	vision.EtoV->pitch = Board_Tx_Info.pitch_imu_angle; 
+	vision.EtoV->pitch_speed = Board_Tx_Info.pitch_imu_speed;
+	vision.EtoV->yaw_speed = Board_Tx_Info.yaw_imu_speed;
+
+	vision.EtoV->roll = (-imu_sensor.info->base_info.pitch - 0.77);
+	
+}
+
+/**
+ * @brief åœ¨æ¥æ”¶åˆ°å¼¹é€Ÿä¿¡æ¯åæ›´æ–°å·²å‘å¼¹æ•°å’Œå¼¹é€Ÿ
+ *
+ */
+// void Vison_Interrupt_Update(void)
+//{
+//   ElectricalToVisionFrame *tx_info = vision.EtoV;
+//	if (1)//.status->rx_state == DEV_ONLINE
+//	{
+//		if (car.car_move_mode == vision_cycle_CAR || car.car_move_mode == vision_gyro_CAR)
+//		{
+//
+//			tx_info->bullet_id++;
+//		}
+//	}
+//////	tx_info->bullet_speed = communicate.shoot_data_rx_info->shooting_speed;
+//}
+
+///**
+// * @brief æ‰“å¼¹å‘½ä»¤æ‰§è¡Œæ—¶é—´è®¡ç®—
+// *
+// * @param flag 0ï¼›å‘½ä»¤å¼€å§‹æ‰§è¡Œ  1ï¼šæ¥æ”¶åˆ°å¼¹é€Ÿ
+// */
+// void Shooting_Cmd_Excute_Tick_Calculating(uint8_t flag)
+//{
+//	static uint32_t cmd_start_tick = 0;
+//	static uint32_t rx_bullet_tick = 0;
+//	static uint8_t rx_bullet_cnt = 0;
+//	static uint8_t reset_cnt_flag = 0;
+//
+//	const uint8_t buf_length = 100;
+//	if (flag == 0)//å‘½ä»¤å¼€å§‹æ‰§è¡Œ
+//	{
+//		cmd_start_tick = HAL_GetTick();
+//	}
+//	else if (flag == 1)//æ¥æ”¶åˆ°å¼¹é€Ÿ
+//	{
+//		rx_bullet_tick = HAL_GetTick();
+//		vision.shooting_cmd_excute_tick = rx_bullet_tick - cmd_start_tick;
+//		vision.shooting_cmd_excute_tick_buf[rx_bullet_cnt]=vision.shooting_cmd_excute_tick;
+//		#if 1
+//		//ç§»åŠ¨æŒ‡é’ˆ
+//		rx_bullet_cnt++;
+//		//å›å½’é›¶ç‚¹
+//		if(rx_bullet_cnt>=buf_length-1)
+//		{
+//			rx_bullet_cnt=0;
+//			reset_cnt_flag=1;
+//		}
+//		//è®¡ç®—å¹³å‡æ•°
+//		float shooting_cmd_excute_tick_sum;
+//
+//		if(reset_cnt_flag==1)//å¦‚æœå›åˆ°åŸç‚¹è¿‡ï¼Œç›´æ¥éå†
+//		{
+//
+//			for(uint8_t i=0;i<buf_length;i++)
+//			{
+//				shooting_cmd_excute_tick_sum+=vision.shooting_cmd_excute_tick_buf[i];
+//			}
+//			vision.shooting_cmd_excute_tick_mean=shooting_cmd_excute_tick_sum/buf_length;
+//		}
+//		else//å¤šå°‘ä¸ªå°±å¤šå°‘ä¸ª
+//		{
+//			for(uint8_t i=0;i<rx_bullet_cnt;i++)
+//			{
+//				shooting_cmd_excute_tick_sum+=vision.shooting_cmd_excute_tick_buf[i];
+//			}
+//			vision.shooting_cmd_excute_tick_mean=shooting_cmd_excute_tick_sum/rx_bullet_cnt;
+//		}
+//		#endif
+//
+//	}
+//}
+
+/**
+ * @name    Vision_HearBeat
+ * @brief   è§†è§‰é€šä¿¡å¿ƒè·³
+ * @note    ç”±ç›‘æ§ä»»åŠ¡è°ƒç”¨
+ */
+void Vision_HearBeat(void)
+{
+	vision.status->offline_cnt++;
+	if (vision.status->offline_cnt >
+		vision.status->offline_cnt_max)
+	{
+		vision.status->offline_cnt =
+			vision.status->offline_cnt_max;
+
+		vision.status->rx_state = DEV_OFFLINE;
+	}
+	else if (vision.status->rx_state == DEV_OFFLINE)
+	{
+		vision.status->rx_state = DEV_ONLINE;
+	}
+}
+/**
+ * @name    Append_Vision_Timing_Buff
+ * @brief   å°†è§†è§‰å‘è¿‡æ¥çš„å‘å°„å»¶æ—¶è½¬åŒ–ä¸ºSystemTickï¼Œå¹¶æ”¾åˆ°æ•°ç»„é‡Œ
+ * @note    Vision_DataRxé‡Œè°ƒç”¨
+ */
+void Append_Vision_Timing_Buff(uint32_t *vision_timing_buff, uint8_t size, uint16_t delay)
+{
+	if (size <= 0)
+	{
+		return; // å¦‚æœæ•°ç»„å¤§å°ä¸º0æˆ–è´Ÿæ•°ï¼Œç›´æ¥è¿”å›
+	}
+	if (delay == 0)
+	{
+		delay = 1;
+	}
+	// å°†å‰©ä½™çš„å…ƒç´ å‰ç§»ä¸€æ ¼
+	for (uint8_t i = 1; i < size; i++)
+	{
+		vision_timing_buff[i - 1] = vision_timing_buff[i];
+	}
+	// åœ¨æ•°ç»„çš„æœ€åä¸€ä¸ªä½ç½®æ·»åŠ å½¢å‚çš„å€¼
+	vision_timing_buff[size - 1] = delay + HAL_GetTick();
+}
+/**
+ * @name     Vision_led_work
+ * @brief    ä¸åŒè§†è§‰çŠ¶æ€ledä¸åŒæ˜¾ç¤º
+ * @note     çº¢ç¯å¤±è”ï¼Œç»¿ç¯é—ªçƒè¡¨ç¤ºæ”¶åˆ°ä¿¡æ¯ä½†æ˜¯æ²¡æ‰¾åˆ°ç›®æ ‡ï¼Œç»¿ç¯å¸¸äº®è¡¨ç¤ºæ‰¾åˆ°ç›®æ ‡
+ */
+void Vision_led_work(void)
+{
+	if (vision.status->rx_state == DEV_OFFLINE)
+	{
+		led.colour = LED_colour_red;
+		led.state = LED_ON;
+	}
+
+	else if (vision.VtoE->flag_union.bit.is_find_target == 1)
+	{
+		led.colour = LED_colour_green;
+		led.state = LED_ON;
+	}
+
+	else if (vision.status->rx_state == DEV_ONLINE)
+	{
+		led.colour = LED_colour_green;
+		led.state = LED_BLINK;
+	}
+
+	else
+	{
+		led.state = LED_OFF;
+	}
+}

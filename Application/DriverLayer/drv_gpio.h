@@ -1,101 +1,101 @@
-
-#ifndef __GPIO_DRV_H
-#define __GPIO_DRV_H
-
-
-/* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx_hal.h"
-#include "main.h"
-
-/* Exported macro ------------------------------------------------------------*/
-//IO¿Ú²Ù×÷ºê¶¨Òå
-#define BITBAND(addr, bitnum) ((addr & 0xF0000000)+0x2000000+((addr &0xFFFFF)<<5)+(bitnum<<2)) 
-#define MEM_ADDR(addr)  *((volatile unsigned long  *)(addr)) 
-#define BIT_ADDR(addr, bitnum)   MEM_ADDR(BITBAND(addr, bitnum)) 
-//IO¿ÚµØÖ·Ó³Éä
-#define GPIOA_ODR_Addr    (GPIOA_BASE+20) //0x40020014
-#define GPIOB_ODR_Addr    (GPIOB_BASE+20) //0x40020414 
-#define GPIOC_ODR_Addr    (GPIOC_BASE+20) //0x40020814 
-#define GPIOD_ODR_Addr    (GPIOD_BASE+20) //0x40020C14 
-#define GPIOE_ODR_Addr    (GPIOE_BASE+20) //0x40021014 
-#define GPIOF_ODR_Addr    (GPIOF_BASE+20) //0x40021414    
-#define GPIOG_ODR_Addr    (GPIOG_BASE+20) //0x40021814   
-#define GPIOH_ODR_Addr    (GPIOH_BASE+20) //0x40021C14    
-#define GPIOI_ODR_Addr    (GPIOI_BASE+20) //0x40022014     
-
-#define GPIOA_IDR_Addr    (GPIOA_BASE+16) //0x40020010 
-#define GPIOB_IDR_Addr    (GPIOB_BASE+16) //0x40020410 
-#define GPIOC_IDR_Addr    (GPIOC_BASE+16) //0x40020810 
-#define GPIOD_IDR_Addr    (GPIOD_BASE+16) //0x40020C10 
-#define GPIOE_IDR_Addr    (GPIOE_BASE+16) //0x40021010 
-#define GPIOF_IDR_Addr    (GPIOF_BASE+16) //0x40021410 
-#define GPIOG_IDR_Addr    (GPIOG_BASE+16) //0x40021810 
-#define GPIOH_IDR_Addr    (GPIOH_BASE+16) //0x40021C10 
-#define GPIOI_IDR_Addr    (GPIOI_BASE+16) //0x40022010 
- 
-//IO¿Ú²Ù×÷,Ö»¶Ôµ¥Ò»µÄIO¿Ú!
-//È·±£nµÄÖµÐ¡ÓÚ16!
-#define PAout(n)   BIT_ADDR(GPIOA_ODR_Addr,n)  //Êä³ö 
-#define PAin(n)    BIT_ADDR(GPIOA_IDR_Addr,n)  //ÊäÈë 
-
-#define PBout(n)   BIT_ADDR(GPIOB_ODR_Addr,n)  //Êä³ö 
-#define PBin(n)    BIT_ADDR(GPIOB_IDR_Addr,n)  //ÊäÈë 
-
-#define PCout(n)   BIT_ADDR(GPIOC_ODR_Addr,n)  //Êä³ö 
-#define PCin(n)    BIT_ADDR(GPIOC_IDR_Addr,n)  //ÊäÈë 
-
-#define PDout(n)   BIT_ADDR(GPIOD_ODR_Addr,n)  //Êä³ö 
-#define PDin(n)    BIT_ADDR(GPIOD_IDR_Addr,n)  //ÊäÈë 
-
-#define PEout(n)   BIT_ADDR(GPIOE_ODR_Addr,n)  //Êä³ö 
-#define PEin(n)    BIT_ADDR(GPIOE_IDR_Addr,n)  //ÊäÈë
-
-#define PFout(n)   BIT_ADDR(GPIOF_ODR_Addr,n)  //Êä³ö 
-#define PFin(n)    BIT_ADDR(GPIOF_IDR_Addr,n)  //ÊäÈë
-
-#define PGout(n)   BIT_ADDR(GPIOG_ODR_Addr,n)  //Êä³ö 
-#define PGin(n)    BIT_ADDR(GPIOG_IDR_Addr,n)  //ÊäÈë
-
-#define PHout(n)   BIT_ADDR(GPIOH_ODR_Addr,n)  //Êä³ö 
-#define PHin(n)    BIT_ADDR(GPIOH_IDR_Addr,n)  //ÊäÈë
-
-#define PIout(n)   BIT_ADDR(GPIOI_ODR_Addr,n)  //Êä³ö 
-#define PIin(n)    BIT_ADDR(GPIOI_IDR_Addr,n)  //ÊäÈë
-
-/* Exported types ------------------------------------------------------------*/
-
-/* Exported functions --------------------------------------------------------*/
-// Led
-//#define LED_RED_ON()		(HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_RESET))
-//#define LED_RED_OFF()		(HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_SET))
-//#define LED_RED_TOGGLE()	(HAL_GPIO_TogglePin(LED_RED_GPIO_Port, LED_RED_Pin))
-
-//#define LED_GREEN_ON()		(HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET))
-//#define LED_GREEN_OFF()		(HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET))
-//#define LED_GREEN_TOGGLE()	(HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin))
-
-//#define LED_BLUE_ON()		(HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, GPIO_PIN_RESET))
-//#define LED_BLUE_OFF()		(HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, GPIO_PIN_SET))
-//#define LED_BLUE_TOGGLE()	(HAL_GPIO_TogglePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin))
-
-//#define LED_ORANGE_ON()		(HAL_GPIO_WritePin(LED_ORANGE_GPIO_Port, LED_ORANGE_Pin, GPIO_PIN_RESET))
-//#define LED_ORANGE_OFF()	(HAL_GPIO_WritePin(LED_ORANGE_GPIO_Port, LED_ORANGE_Pin, GPIO_PIN_SET))
-//#define LED_ORANGE_TOGGLE()	(HAL_GPIO_TogglePin(LED_ORANGE_GPIO_Port, LED_ORANGE_Pin))
-
-//// Laser
-
-//#define LASER_GPIO_Port  GPIOD
-//#define LASER_Pin        GPIO_PIN_14
-
-//#define LASER_ON()			(HAL_GPIO_WritePin(LASER_GPIO_Port, LASER_Pin, GPIO_PIN_SET))
-//#define LASER_OFF()			(HAL_GPIO_WritePin(LASER_GPIO_Port, LASER_Pin, GPIO_PIN_RESET))
-//#define LASER_TOGGLE()	(HAL_GPIO_TogglePin(LASER_GPIO_Port, LASER_Pin))
-
-#define BMI_CS_LOW()			(HAL_GPIO_WritePin(BMI_CS_GPIO_Port, BMI_CS_Pin, GPIO_PIN_RESET))
-#define BMI_CS_HIG()			(HAL_GPIO_WritePin(BMI_CS_GPIO_Port, BMI_CS_Pin, GPIO_PIN_SET))
-#define EX_BMI_CS_LOW()		(HAL_GPIO_WritePin(EX_BMI_CS_GPIO_Port, EX_BMI_CS_Pin, GPIO_PIN_RESET))
-#define EX_BMI_CS_HIG()		(HAL_GPIO_WritePin(EX_BMI_CS_GPIO_Port, EX_BMI_CS_Pin, GPIO_PIN_SET))
-
-//#define BMI_CS_Pin GPIO_PIN_12
-//#define BMI_CS_GPIO_Port GPIOB
-#endif
+
+#ifndef __GPIO_DRV_H
+#define __GPIO_DRV_H
+
+
+/* Includes ------------------------------------------------------------------*/
+#include "stm32f4xx_hal.h"
+#include "main.h"
+
+/* Exported macro ------------------------------------------------------------*/
+//IOå£æ“ä½œå®å®šä¹‰
+#define BITBAND(addr, bitnum) ((addr & 0xF0000000)+0x2000000+((addr &0xFFFFF)<<5)+(bitnum<<2)) 
+#define MEM_ADDR(addr)  *((volatile unsigned long  *)(addr)) 
+#define BIT_ADDR(addr, bitnum)   MEM_ADDR(BITBAND(addr, bitnum)) 
+//IOå£åœ°å€æ˜ å°„
+#define GPIOA_ODR_Addr    (GPIOA_BASE+20) //0x40020014
+#define GPIOB_ODR_Addr    (GPIOB_BASE+20) //0x40020414 
+#define GPIOC_ODR_Addr    (GPIOC_BASE+20) //0x40020814 
+#define GPIOD_ODR_Addr    (GPIOD_BASE+20) //0x40020C14 
+#define GPIOE_ODR_Addr    (GPIOE_BASE+20) //0x40021014 
+#define GPIOF_ODR_Addr    (GPIOF_BASE+20) //0x40021414    
+#define GPIOG_ODR_Addr    (GPIOG_BASE+20) //0x40021814   
+#define GPIOH_ODR_Addr    (GPIOH_BASE+20) //0x40021C14    
+#define GPIOI_ODR_Addr    (GPIOI_BASE+20) //0x40022014     
+
+#define GPIOA_IDR_Addr    (GPIOA_BASE+16) //0x40020010 
+#define GPIOB_IDR_Addr    (GPIOB_BASE+16) //0x40020410 
+#define GPIOC_IDR_Addr    (GPIOC_BASE+16) //0x40020810 
+#define GPIOD_IDR_Addr    (GPIOD_BASE+16) //0x40020C10 
+#define GPIOE_IDR_Addr    (GPIOE_BASE+16) //0x40021010 
+#define GPIOF_IDR_Addr    (GPIOF_BASE+16) //0x40021410 
+#define GPIOG_IDR_Addr    (GPIOG_BASE+16) //0x40021810 
+#define GPIOH_IDR_Addr    (GPIOH_BASE+16) //0x40021C10 
+#define GPIOI_IDR_Addr    (GPIOI_BASE+16) //0x40022010 
+ 
+//IOå£æ“ä½œ,åªå¯¹å•ä¸€çš„IOå£!
+//ç¡®ä¿nçš„å€¼å°äºŽ16!
+#define PAout(n)   BIT_ADDR(GPIOA_ODR_Addr,n)  //è¾“å‡º 
+#define PAin(n)    BIT_ADDR(GPIOA_IDR_Addr,n)  //è¾“å…¥ 
+
+#define PBout(n)   BIT_ADDR(GPIOB_ODR_Addr,n)  //è¾“å‡º 
+#define PBin(n)    BIT_ADDR(GPIOB_IDR_Addr,n)  //è¾“å…¥ 
+
+#define PCout(n)   BIT_ADDR(GPIOC_ODR_Addr,n)  //è¾“å‡º 
+#define PCin(n)    BIT_ADDR(GPIOC_IDR_Addr,n)  //è¾“å…¥ 
+
+#define PDout(n)   BIT_ADDR(GPIOD_ODR_Addr,n)  //è¾“å‡º 
+#define PDin(n)    BIT_ADDR(GPIOD_IDR_Addr,n)  //è¾“å…¥ 
+
+#define PEout(n)   BIT_ADDR(GPIOE_ODR_Addr,n)  //è¾“å‡º 
+#define PEin(n)    BIT_ADDR(GPIOE_IDR_Addr,n)  //è¾“å…¥
+
+#define PFout(n)   BIT_ADDR(GPIOF_ODR_Addr,n)  //è¾“å‡º 
+#define PFin(n)    BIT_ADDR(GPIOF_IDR_Addr,n)  //è¾“å…¥
+
+#define PGout(n)   BIT_ADDR(GPIOG_ODR_Addr,n)  //è¾“å‡º 
+#define PGin(n)    BIT_ADDR(GPIOG_IDR_Addr,n)  //è¾“å…¥
+
+#define PHout(n)   BIT_ADDR(GPIOH_ODR_Addr,n)  //è¾“å‡º 
+#define PHin(n)    BIT_ADDR(GPIOH_IDR_Addr,n)  //è¾“å…¥
+
+#define PIout(n)   BIT_ADDR(GPIOI_ODR_Addr,n)  //è¾“å‡º 
+#define PIin(n)    BIT_ADDR(GPIOI_IDR_Addr,n)  //è¾“å…¥
+
+/* Exported types ------------------------------------------------------------*/
+
+/* Exported functions --------------------------------------------------------*/
+// Led
+//#define LED_RED_ON()		(HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_RESET))
+//#define LED_RED_OFF()		(HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_SET))
+//#define LED_RED_TOGGLE()	(HAL_GPIO_TogglePin(LED_RED_GPIO_Port, LED_RED_Pin))
+
+//#define LED_GREEN_ON()		(HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET))
+//#define LED_GREEN_OFF()		(HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET))
+//#define LED_GREEN_TOGGLE()	(HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin))
+
+//#define LED_BLUE_ON()		(HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, GPIO_PIN_RESET))
+//#define LED_BLUE_OFF()		(HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, GPIO_PIN_SET))
+//#define LED_BLUE_TOGGLE()	(HAL_GPIO_TogglePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin))
+
+//#define LED_ORANGE_ON()		(HAL_GPIO_WritePin(LED_ORANGE_GPIO_Port, LED_ORANGE_Pin, GPIO_PIN_RESET))
+//#define LED_ORANGE_OFF()	(HAL_GPIO_WritePin(LED_ORANGE_GPIO_Port, LED_ORANGE_Pin, GPIO_PIN_SET))
+//#define LED_ORANGE_TOGGLE()	(HAL_GPIO_TogglePin(LED_ORANGE_GPIO_Port, LED_ORANGE_Pin))
+
+//// Laser
+
+//#define LASER_GPIO_Port  GPIOD
+//#define LASER_Pin        GPIO_PIN_14
+
+//#define LASER_ON()			(HAL_GPIO_WritePin(LASER_GPIO_Port, LASER_Pin, GPIO_PIN_SET))
+//#define LASER_OFF()			(HAL_GPIO_WritePin(LASER_GPIO_Port, LASER_Pin, GPIO_PIN_RESET))
+//#define LASER_TOGGLE()	(HAL_GPIO_TogglePin(LASER_GPIO_Port, LASER_Pin))
+
+#define BMI_CS_LOW()			(HAL_GPIO_WritePin(BMI_CS_GPIO_Port, BMI_CS_Pin, GPIO_PIN_RESET))
+#define BMI_CS_HIG()			(HAL_GPIO_WritePin(BMI_CS_GPIO_Port, BMI_CS_Pin, GPIO_PIN_SET))
+#define EX_BMI_CS_LOW()		(HAL_GPIO_WritePin(EX_BMI_CS_GPIO_Port, EX_BMI_CS_Pin, GPIO_PIN_RESET))
+#define EX_BMI_CS_HIG()		(HAL_GPIO_WritePin(EX_BMI_CS_GPIO_Port, EX_BMI_CS_Pin, GPIO_PIN_SET))
+
+//#define BMI_CS_Pin GPIO_PIN_12
+//#define BMI_CS_GPIO_Port GPIOB
+#endif

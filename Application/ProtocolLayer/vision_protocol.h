@@ -1,142 +1,142 @@
-/**
- * @file vision_protocol.h
- * @author Isaac
- * @brief ÊÓ¾õÍ¨ĞÅĞ­Òé
- * @version 0.1
- * @date 2023-11-21
- * 
- * @copyright Copyright (c) 2023
- * 
- */
-
-#ifndef __VISION_PROTOCOL_H
-#define __VISION_PROTOCOL_H
-#include "gimbal.h"
-#include "rp_config.h"
-#include "led.h"
-#define  VISION_OFFLINE_CNT_MAX  (80)//ÀëÏß×î´ó¼ÆÊı(ms)
- /**
- * @brief µç¿Ø·¢¸øÊÓ¾õµÄÊı¾İÖ¡½á¹¹Ìå
- */
-typedef struct  __attribute__((packed)) 
-{
- uint8_t SOF; // Ö¡Í·£¬Êı¾İÖ¡µÄÆğÊ¼±êÖ¾
-
- __packed union { // ×´Ì¬±êÖ¾Î»ÁªºÏÌå£¨32Î»£©
- uint32_t all_flags; // ÕûÌå32Î»±êÖ¾Öµ
- __packed struct {
-	 uint8_t own_color:1 ; // Î»0£º¼º·½ÑÕÉ«
- uint8_t game_start:1 ; // Î»1£º±ÈÈü¿ªÊ¼
- uint8_t is_ready:1 ; // Î»2£ºÊÇ·ñÔÊĞí´òµ¯£¨ÈÈÁ¿¹» && ¸´Î»Íê±Ï£©
- uint8_t outpost_mode:1  ;// Î»3£ºÖ»ËøÇ°ÉÚÄ£Ê½
- uint8_t energy_engine_mode:1  ; // ´ò·ûÄ£Ê½
-//	 uint8_t is_com_vision:1;  
- uint32_t reserved :26 ; // Î»6-31£º¿ÉÀ©Õ¹
- } bit; // °´Î»·ÃÎÊµÄ×Ó½á¹¹
- } flag_union; 
-	  uint8_t CRC8; // Ñ­»·ÈßÓàĞ£Ñé£¬ÓÃÓÚĞ£ÑéÖ¡Í·²¿·ÖµÄÊı¾İÍêÕûĞÔ
-
- float yaw; // µ±Ç°yaw½Ç
- float pitch; // µ±Ç°pitch½Ç
- float roll; // µ±Ç°ÔÆÌ¨roll½Ç
- float yaw_speed; // yawÖáËÙ¶È
- float pitch_speed; // pitchÖáËÙ¶È
- int8_t pitch_offset; // pitchÖáÆ«ÒÆÁ¿£¨µç¿ØÍË×ÔÃéºóÇåÁã£©
- int8_t yaw_offset; // yawÖáÆ«ÒÆÁ¿£¨µç¿ØÍË×ÔÃéºóÇåÁã£©
-// float bullet_speed; // ×Óµ¯ËÙ¶È
- 
- uint16_t bullet_id;    // Ã¿´ò³öÒ»·¢¼Ó1
-
- uint32_t user_debug; // ÓÃ»§µ÷ÊÔĞÅÏ¢£º
- // - µ¥·¢Ä£Ê½£º½ÓÊÕÃüÁîµ½×Óµ¯¹ı²âËÙÄ£¿éµÄÑÓÊ±£¨ms£©
- // - Á¬·¢Ä£Ê½£º·¢Éä×Óµ¯µÄ¼ä¸ôÊ±¼ä£¨ms£©
- // - Í¨ÓÃ£ºÓÃÓÚµ÷ÊÔÄ¿µÄ
- uint16_t CRC16; // Ñ­»·ÈßÓàĞ£Ñé£¬ÓÃÓÚĞ£ÑéÕû¸öÊı¾İÖ¡µÄÍêÕûĞÔ
-} ElectricalToVisionFrame;
-
-/**
- * @brief ÊÓ¾õ·¢¸øµç¿ØµÄÊı¾İÖ¡½á¹¹Ìå
- */
-typedef struct  __attribute__((packed)) 
-{
- uint8_t SOF; // Ö¡Í·£¬Êı¾İÖ¡µÄÆğÊ¼±êÖ¾
- __packed union { // ×´Ì¬±êÖ¾Î»ÁªºÏÌå£¨32Î»£©
- uint32_t all_flags; // ÕûÌå32Î»±êÖ¾Öµ
- __packed struct {
- uint8_t is_find_target:1  ;// Î»0£ºÓÃÓÚ¾ö¶¨ÊÇ·ñ¸øÊÓ¾õ¿Øpitch¡¢yaw
- uint8_t is_keep_shooting:1  ;// Î»1£ºÓÃÓÚ²¦ÅÌËÙ¶È»·»¹ÊÇ½Ç¶È»·£¬Ó¢ĞÛÖ»½Ç¶È
- uint8_t is_enable_shootting :1 ;  // Î»2£ºÓÃÓÚÊÇ·ñ¿ÉÒÔ´òµ¯
- uint8_t detect_num :4 ; // Î»3-6£ºËøµ½¼¸ºÅ£¨Õ¼ÓÃ4Î»£¬Ö§³Ö0-15±àºÅ
- uint32_t reserved :25 ;  // Î»7-31£º±£ÁôÎ»
- } bit; // °´Î»·ÃÎÊµÄ×Ó½á¹¹
- } flag_union; 
-
-  uint8_t CRC8; // Ñ­»·ÈßÓàĞ£Ñé£¬ÓÃÓÚĞ£ÑéÖ¡Í·²¿·ÖµÄÊı¾İÍêÕûĞÔ
-
- float yaw; // Ä¿±êyaw½Ç
- float pitch; // Ä¿±êpitch½Ç
- 
- uint16_t timing;//·¢ÉäÑÓÊ±
- 
- uint32_t user_debug; // ÓÃ»§µ÷ÊÔĞÅÏ¢£¬×Ô¶¨Òådebug
- uint16_t CRC16; // Ñ­»·ÈßÓàĞ£Ñé£¬ÓÃÓÚĞ£ÑéÕû¸öÊı¾İÖ¡µÄÍêÕûĞÔ
-} VisionToElectricalFrame;
-
-
-/**
- * @brief ÊÓ¾õÍ¨ĞÅ ×´Ì¬½á¹¹Ìå
- */
-typedef struct __attribute__((packed)) 
-{
-	dev_work_state_t tx_state;						//·¢ËÍ×´Ì¬
-	dev_work_state_t rx_state;						//½ÓÊÜ×´Ì¬
-	uint32_t send_time;                   //·¢ËÍ¼ä¸ô
-	uint32_t rx_tick;						//½ÓÊÜµ½ĞÅÏ¢Ê±µÄÊ±¼ä
-	uint8_t offline_cnt;									//½ÓÊÜÀëÏß¼ÆÊı
-	uint8_t offline_cnt_max;							//½ÓÊÜÀëÏß×î´ó¼ÆÊı
-}Vision_Status_t;
-
-/**
- * @brief Ê±¼ä´ÁĞÅÏ¢
- * 
- */
-
-typedef  struct __attribute__((packed)) 
-{
-	uint32_t vision_shoot_timing[3];
-	uint32_t shooting_begin_tick; //¿ªÊ¼´òµ¯Ê±ÓÃÉÏÒ»Ö¡½ÓÊÜÊÓ¾õµÄtick
-}Vision_Timestamp_Info_t;
-
-
-/**
- * @brief ÊÓ¾õÍ¨ĞÅ ×Ü½á¹¹Ìå
- * 
- */
-typedef struct __attribute__((packed)) 
-{
-	/* data */
-//	Vision_Tx_Info_t *tx_info;
-//	Vision_Rx_Info_t *rx_info;
-	VisionToElectricalFrame *VtoE;
-	ElectricalToVisionFrame *EtoV;
-	Vision_Timestamp_Info_t *timestamp_info;
-	Vision_Status_t  *status;
-	uint32_t shooting_cmd_excute_tick;
-	uint16_t shooting_cmd_excute_tick_buf[100];
-	float shooting_cmd_excute_tick_mean;
-	float shooting_cmd_excute_tick_variance;
-	
-}Vision_t;
-
-extern Vision_t vision;
-
-void Vison_Interrupt_Update(void);
-void Vision_led_work(void);
-void Vision_DataTx(UART_HandleTypeDef *huart);
-void Vision_DataRx(uint8_t *rxBuf);
-void Vision_Board_Update(void);
-
-void Shooting_Cmd_Excute_Tick_Calculating(uint8_t flag);
-void Rearrange_Vision_Timing_Buff(uint32_t* vision_timing_buff, uint8_t size);
-void Vision_HearBeat(void);
-#endif
+/**
+ * @file vision_protocol.h
+ * @author Isaac
+ * @brief è§†è§‰é€šä¿¡åè®®
+ * @version 0.1
+ * @date 2023-11-21
+ * 
+ * @copyright Copyright (c) 2023
+ * 
+ */
+
+#ifndef __VISION_PROTOCOL_H
+#define __VISION_PROTOCOL_H
+#include "gimbal.h"
+#include "rp_config.h"
+#include "led.h"
+#define  VISION_OFFLINE_CNT_MAX  (80)//ç¦»çº¿æœ€å¤§è®¡æ•°(ms)
+ /**
+ * @brief ç”µæ§å‘ç»™è§†è§‰çš„æ•°æ®å¸§ç»“æ„ä½“
+ */
+typedef struct  __attribute__((packed)) 
+{
+ uint8_t SOF; // å¸§å¤´ï¼Œæ•°æ®å¸§çš„èµ·å§‹æ ‡å¿—
+
+ __packed union { // çŠ¶æ€æ ‡å¿—ä½è”åˆä½“ï¼ˆ32ä½ï¼‰
+ uint32_t all_flags; // æ•´ä½“32ä½æ ‡å¿—å€¼
+ __packed struct {
+	 uint8_t own_color:1 ; // ä½0ï¼šå·±æ–¹é¢œè‰²
+ uint8_t game_start:1 ; // ä½1ï¼šæ¯”èµ›å¼€å§‹
+ uint8_t is_ready:1 ; // ä½2ï¼šæ˜¯å¦å…è®¸æ‰“å¼¹ï¼ˆçƒ­é‡å¤Ÿ && å¤ä½å®Œæ¯•ï¼‰
+ uint8_t outpost_mode:1  ;// ä½3ï¼šåªé”å‰å“¨æ¨¡å¼
+ uint8_t energy_engine_mode:1  ; // æ‰“ç¬¦æ¨¡å¼
+//	 uint8_t is_com_vision:1;  
+ uint32_t reserved :26 ; // ä½6-31ï¼šå¯æ‰©å±•
+ } bit; // æŒ‰ä½è®¿é—®çš„å­ç»“æ„
+ } flag_union; 
+	  uint8_t CRC8; // å¾ªç¯å†—ä½™æ ¡éªŒï¼Œç”¨äºæ ¡éªŒå¸§å¤´éƒ¨åˆ†çš„æ•°æ®å®Œæ•´æ€§
+
+ float yaw; // å½“å‰yawè§’
+ float pitch; // å½“å‰pitchè§’
+ float roll; // å½“å‰äº‘å°rollè§’
+ float yaw_speed; // yawè½´é€Ÿåº¦
+ float pitch_speed; // pitchè½´é€Ÿåº¦
+ int8_t pitch_offset; // pitchè½´åç§»é‡ï¼ˆç”µæ§é€€è‡ªç„åæ¸…é›¶ï¼‰
+ int8_t yaw_offset; // yawè½´åç§»é‡ï¼ˆç”µæ§é€€è‡ªç„åæ¸…é›¶ï¼‰
+// float bullet_speed; // å­å¼¹é€Ÿåº¦
+ 
+ uint16_t bullet_id;    // æ¯æ‰“å‡ºä¸€å‘åŠ 1
+
+ uint32_t user_debug; // ç”¨æˆ·è°ƒè¯•ä¿¡æ¯ï¼š
+ // - å•å‘æ¨¡å¼ï¼šæ¥æ”¶å‘½ä»¤åˆ°å­å¼¹è¿‡æµ‹é€Ÿæ¨¡å—çš„å»¶æ—¶ï¼ˆmsï¼‰
+ // - è¿å‘æ¨¡å¼ï¼šå‘å°„å­å¼¹çš„é—´éš”æ—¶é—´ï¼ˆmsï¼‰
+ // - é€šç”¨ï¼šç”¨äºè°ƒè¯•ç›®çš„
+ uint16_t CRC16; // å¾ªç¯å†—ä½™æ ¡éªŒï¼Œç”¨äºæ ¡éªŒæ•´ä¸ªæ•°æ®å¸§çš„å®Œæ•´æ€§
+} ElectricalToVisionFrame;
+
+/**
+ * @brief è§†è§‰å‘ç»™ç”µæ§çš„æ•°æ®å¸§ç»“æ„ä½“
+ */
+typedef struct  __attribute__((packed)) 
+{
+ uint8_t SOF; // å¸§å¤´ï¼Œæ•°æ®å¸§çš„èµ·å§‹æ ‡å¿—
+ __packed union { // çŠ¶æ€æ ‡å¿—ä½è”åˆä½“ï¼ˆ32ä½ï¼‰
+ uint32_t all_flags; // æ•´ä½“32ä½æ ‡å¿—å€¼
+ __packed struct {
+ uint8_t is_find_target:1  ;// ä½0ï¼šç”¨äºå†³å®šæ˜¯å¦ç»™è§†è§‰æ§pitchã€yaw
+ uint8_t is_keep_shooting:1  ;// ä½1ï¼šç”¨äºæ‹¨ç›˜é€Ÿåº¦ç¯è¿˜æ˜¯è§’åº¦ç¯ï¼Œè‹±é›„åªè§’åº¦
+ uint8_t is_enable_shootting :1 ;  // ä½2ï¼šç”¨äºæ˜¯å¦å¯ä»¥æ‰“å¼¹
+ uint8_t detect_num :4 ; // ä½3-6ï¼šé”åˆ°å‡ å·ï¼ˆå ç”¨4ä½ï¼Œæ”¯æŒ0-15ç¼–å·
+ uint32_t reserved :25 ;  // ä½7-31ï¼šä¿ç•™ä½
+ } bit; // æŒ‰ä½è®¿é—®çš„å­ç»“æ„
+ } flag_union; 
+
+  uint8_t CRC8; // å¾ªç¯å†—ä½™æ ¡éªŒï¼Œç”¨äºæ ¡éªŒå¸§å¤´éƒ¨åˆ†çš„æ•°æ®å®Œæ•´æ€§
+
+ float yaw; // ç›®æ ‡yawè§’
+ float pitch; // ç›®æ ‡pitchè§’
+ 
+ uint16_t timing;//å‘å°„å»¶æ—¶
+ 
+ uint32_t user_debug; // ç”¨æˆ·è°ƒè¯•ä¿¡æ¯ï¼Œè‡ªå®šä¹‰debug
+ uint16_t CRC16; // å¾ªç¯å†—ä½™æ ¡éªŒï¼Œç”¨äºæ ¡éªŒæ•´ä¸ªæ•°æ®å¸§çš„å®Œæ•´æ€§
+} VisionToElectricalFrame;
+
+
+/**
+ * @brief è§†è§‰é€šä¿¡ çŠ¶æ€ç»“æ„ä½“
+ */
+typedef struct __attribute__((packed)) 
+{
+	dev_work_state_t tx_state;						//å‘é€çŠ¶æ€
+	dev_work_state_t rx_state;						//æ¥å—çŠ¶æ€
+	uint32_t send_time;                   //å‘é€é—´éš”
+	uint32_t rx_tick;						//æ¥å—åˆ°ä¿¡æ¯æ—¶çš„æ—¶é—´
+	uint8_t offline_cnt;									//æ¥å—ç¦»çº¿è®¡æ•°
+	uint8_t offline_cnt_max;							//æ¥å—ç¦»çº¿æœ€å¤§è®¡æ•°
+}Vision_Status_t;
+
+/**
+ * @brief æ—¶é—´æˆ³ä¿¡æ¯
+ * 
+ */
+
+typedef  struct __attribute__((packed)) 
+{
+	uint32_t vision_shoot_timing[3];
+	uint32_t shooting_begin_tick; //å¼€å§‹æ‰“å¼¹æ—¶ç”¨ä¸Šä¸€å¸§æ¥å—è§†è§‰çš„tick
+}Vision_Timestamp_Info_t;
+
+
+/**
+ * @brief è§†è§‰é€šä¿¡ æ€»ç»“æ„ä½“
+ * 
+ */
+typedef struct __attribute__((packed)) 
+{
+	/* data */
+//	Vision_Tx_Info_t *tx_info;
+//	Vision_Rx_Info_t *rx_info;
+	VisionToElectricalFrame *VtoE;
+	ElectricalToVisionFrame *EtoV;
+	Vision_Timestamp_Info_t *timestamp_info;
+	Vision_Status_t  *status;
+	uint32_t shooting_cmd_excute_tick;
+	uint16_t shooting_cmd_excute_tick_buf[100];
+	float shooting_cmd_excute_tick_mean;
+	float shooting_cmd_excute_tick_variance;
+	
+}Vision_t;
+
+extern Vision_t vision;
+
+void Vison_Interrupt_Update(void);
+void Vision_led_work(void);
+void Vision_DataTx(UART_HandleTypeDef *huart);
+void Vision_DataRx(uint8_t *rxBuf);
+void Vision_Board_Update(void);
+
+void Shooting_Cmd_Excute_Tick_Calculating(uint8_t flag);
+void Rearrange_Vision_Timing_Buff(uint32_t* vision_timing_buff, uint8_t size);
+void Vision_HearBeat(void);
+#endif

@@ -1,236 +1,236 @@
-#ifndef __RC_SENSOR_H
-#define __RC_SENSOR_H
-
-/* Includes ------------------------------------------------------------------*/
-#include "rp_config.h"
-
-/* Exported macro ------------------------------------------------------------*/
-#define RC_ONLINE	 (rc_sensor.work_state==DEV_ONLINE)
-#define RC_OFFLINE	 (rc_sensor.work_state==DEV_OFFLINE)
-#define RC_SLEEP      (rc_sensor.work_state==DEV_SLEEP)
-/* ----------------------- RC Channel Definition------------------------------*/
-
-#define    RC_CH_VALUE_MIN       ((uint16_t)364 )
-#define    RC_CH_VALUE_OFFSET    ((uint16_t)1024)
-#define	   RC_CH_VALUE_MAX       ((uint16_t)1684)
-#define	   RC_CH_VALUE_SIDE_WIDTH	((RC_CH_VALUE_MAX-RC_CH_VALUE_MIN)/2)
-
-/* ----------------------- RC Switch Definition-------------------------------*/
-
-#define    RC_SW_UP              ((uint16_t)1)
-#define    RC_SW_MID             ((uint16_t)3)
-#define    RC_SW_DOWN            ((uint16_t)2)
-
-/* ----------------------- RC Thumbwheel Definition-------------------------------*/
-
-#define    RC_TB_UP              ((uint16_t)0)
-#define    RC_TB_MU              ((uint16_t)1)
-#define    RC_TB_MD              ((uint16_t)3)
-#define    RC_TB_DN              ((uint16_t)2)
-
-
-/* ----------------------- PC Key Definition-------------------------------- */
-
-#define    KEY_PRESSED_OFFSET_W        ((uint16_t)0x01<<0)
-#define    KEY_PRESSED_OFFSET_S        ((uint16_t)0x01<<1)
-#define    KEY_PRESSED_OFFSET_A        ((uint16_t)0x01<<2)
-#define    KEY_PRESSED_OFFSET_D        ((uint16_t)0x01<<3)
-#define    KEY_PRESSED_OFFSET_SHIFT    ((uint16_t)0x01<<4)
-#define    KEY_PRESSED_OFFSET_CTRL     ((uint16_t)0x01<<5)
-#define    KEY_PRESSED_OFFSET_Q        ((uint16_t)0x01<<6)
-#define    KEY_PRESSED_OFFSET_E        ((uint16_t)0x01<<7)
-#define    KEY_PRESSED_OFFSET_R        ((uint16_t)0x01<<8)
-#define    KEY_PRESSED_OFFSET_F        ((uint16_t)0x01<<9)
-#define    KEY_PRESSED_OFFSET_G        ((uint16_t)0x01<<10)
-#define    KEY_PRESSED_OFFSET_Z        ((uint16_t)0x01<<11)
-#define    KEY_PRESSED_OFFSET_X        ((uint16_t)0x01<<12)
-#define    KEY_PRESSED_OFFSET_C        ((uint16_t)0x01<<13)
-#define    KEY_PRESSED_OFFSET_V        ((uint16_t)0x01<<14)
-#define    KEY_PRESSED_OFFSET_B        ((uint16_t)0x01<<15)
-
-/* ¼ì²â°´¼ü³¤°´Ê±¼ä */
-#define MOUSE_BTN_L_CNT_MAX     833         //ms Êó±ê×ó¼ü£¬Ç°ÉÚÆµÂÊ
-#define MOUSE_BTN_R_CNT_MAX     500         //ms Êó±êÓÒ¼ü
-#define KEY_Q_CNT_MAX           500         //ms Q¼ü
-#define KEY_W_CNT_MAX           400		//ms W¼ü
-#define KEY_E_CNT_MAX           500         //ms E¼ü
-#define KEY_R_CNT_MAX           500         //ms R¼ü
-#define KEY_A_CNT_MAX           400	    //ms A¼ü
-#define KEY_S_CNT_MAX           400	    //ms S¼ü
-#define KEY_D_CNT_MAX           400	    //ms D¼ü
-#define KEY_F_CNT_MAX           500         //ms F¼ü
-#define KEY_G_CNT_MAX           500         //ms G¼ü
-#define KEY_Z_CNT_MAX           500         //ms Z¼ü
-#define KEY_X_CNT_MAX           500         //ms X¼ü
-#define KEY_C_CNT_MAX           500         //ms C¼ü
-#define KEY_V_CNT_MAX           500         //ms V¼ü
-#define KEY_B_CNT_MAX           500         //ms B¼ü
-#define KEY_SHIFT_CNT_MAX       500         //ms SHIFT¼ü
-#define KEY_CTRL_CNT_MAX        2500        //ms CTRL¼ü
-
-/* Æ½»¬ÂË²¨´ÎÊý */
-#define REMOTE_SMOOTH_TIMES     10          //Êó±êÆ½»¬ÂË²¨´ÎÊý
-
-/* ----------------------- Function Definition-------------------------------- */
-/* Ò£¿ØÒ¡¸ËÍ¨µÀÆ«ÒÆÖµ */
-#define		RC_SW1_VALUE				(rc_sensor_info.s1)
-#define		RC_SW2_VALUE				(rc_sensor_info.s2)
-#define		RC_LEFT_CH_LR_VALUE			(rc_sensor_info.ch2)
-#define		RC_LEFT_CH_UD_VALUE			(rc_sensor_info.ch3)
-#define		RC_RIGH_CH_LR_VALUE			(rc_sensor_info.ch0)
-#define		RC_RIGH_CH_UD_VALUE			(rc_sensor_info.ch1)
-#define		RC_THUMB_WHEEL_VALUE		(rc_sensor_info.thumbwheel)
-
-/* ¼ì²âÒ£¿ØÆ÷¿ª¹Ø×´Ì¬ */
-#define    IF_RC_SW1_UP      (rc_sensor_info.s1.value == RC_SW_UP)
-#define    IF_RC_SW1_MID     (rc_sensor_info.s1.value == RC_SW_MID)
-#define    IF_RC_SW1_DOWN    (rc_sensor_info.s1.value == RC_SW_DOWN)
-#define    IF_RC_SW2_UP      (rc_sensor_info.s2.value == RC_SW_UP)
-#define    IF_RC_SW2_MID     (rc_sensor_info.s2.value == RC_SW_MID)
-#define    IF_RC_SW2_DOWN    (rc_sensor_info.s2.value == RC_SW_DOWN)
-
-/* »ñÈ¡Êó±êÈýÖáµÄÒÆ¶¯ËÙ¶È */
-#define    MOUSE_X_MOVE_SPEED    (rc_sensor_info.mouse_vx)
-#define    MOUSE_Y_MOVE_SPEED    (rc_sensor_info.mouse_vy)
-#define    MOUSE_Z_MOVE_SPEED    (rc_sensor_info.mouse_vz)
-
-/* ¼ì²âÊó±ê°´¼ü×´Ì¬ 
-   °´ÏÂÎª1£¬Ã»°´ÏÂÎª0*/
-#define    MOUSE_PRESSED_LEFT    (rc_sensor_info.mouse_btn_l==1)
-#define    MOUSE_PRESSED_RIGH    (rc_sensor_info.mouse_btn_r==1)
-
-
-/* ¼ì²â¼üÅÌ°´¼ü×´Ì¬ 
-   Èô¶ÔÓ¦°´¼ü±»°´ÏÂ£¬ÔòÂß¼­±í´ïÊ½µÄÖµÎª1£¬·ñÔòÎª0 */
-#define    KEY_PRESSED         (  rc_sensor_info.key_v  )
-#define    KEY_PRESSED_W       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_W)    != 0 )
-#define    KEY_PRESSED_S       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_S)    != 0 )
-#define    KEY_PRESSED_A       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_A)    != 0 )
-#define    KEY_PRESSED_D       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_D)    != 0 )
-#define    KEY_PRESSED_Q       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_Q)    != 0 )
-#define    KEY_PRESSED_E       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_E)    != 0 )
-#define    KEY_PRESSED_G       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_G)    != 0 )
-#define    KEY_PRESSED_X       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_X)    != 0 )
-#define    KEY_PRESSED_Z       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_Z)    != 0 )
-#define    KEY_PRESSED_C       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_C)    != 0 )
-#define    KEY_PRESSED_B       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_B)    != 0 )
-#define    KEY_PRESSED_V       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_V)    != 0 )
-#define    KEY_PRESSED_F       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_F)    != 0 )
-#define    KEY_PRESSED_R       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_R)    != 0 )
-#define    KEY_PRESSED_CTRL    ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_CTRL) != 0 )
-#define    KEY_PRESSED_SHIFT   ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_SHIFT) != 0 )
-
-/* Exported types ------------------------------------------------------------*/
-/* °´¼ü×´Ì¬Ã¶¾Ù */
-typedef enum
-{
-  release,              //·ÅËÉ
-  release_to_press,     //ÏÂ½µÑØ
-  short_press,          //¶Ì°´
-  long_press,           //³¤°´
-  press_to_release,     //ÉÏÉýÑØ
-}key_board_status_e;
-
-/* °´¼üÐÅÏ¢ */
-typedef struct key_board_info_struct {
-  uint8_t			  value; 			//Öµ
-  key_board_status_e status;            //×´Ì¬
-  key_board_status_e last_status;       //ÉÏÒ»´Î×´Ì¬
-	
-  int16_t cnt;                          //µ±Ç°¼ÆÊý
-  int16_t cnt_max;                      //¼ÆÊýÉÏÏÞ
-}key_board_info_t;
-
-/* ²¦¸ËÐÅÏ¢ */
-typedef struct
-{
-  uint8_t value_last;  //ÉÏÒ»´ÎÖµ
-  uint8_t value;       //ÐÂÖµ
-  uint8_t status;      //×´Ì¬
-}remote_switch_info_t;
-
-/* ²¦ÂÖÐÅÏ¢ */
-typedef struct
-{
-  int16_t value_last;   //ÉÏÒ»´ÎÖµ
-  int16_t value;        //ÐÂÖµ
-  uint8_t step[4];      //²¨ÂÖÌø±ä´Ó0±ä1»ò1µ½0
-  uint8_t step_rising_trigger[4]; //²¨ÂÖÌø±äË²¼äÎª1
-	int16_t wheel_count;
-}thumbwheel_info_t;
-
-/* Ò£¿ØÆ÷²¦¸Ë×´Ì¬Ã¶¾Ù */
-typedef enum 
-{
-  keep_R,         //±£³Ö
-  up_R,           //ÏòÉÏ²¦
-  mid_R,          //ÏòÖÐ²¦
-  down_R,         //ÏòÏÂ²¦
-}remote_status_e;
-
-typedef struct rc_sensor_info_struct {
-	/* ²¦ÂÖÌø±äÖµ */
-	int16_t    tw_step_value[4];
-	
-	/* Ò£¿ØÆ÷ */
-	int16_t 	ch0;
-	int16_t 	ch1;
-	int16_t 	ch2;
-	int16_t 	ch3;
-	remote_switch_info_t s1;
-	remote_switch_info_t s2;
-	thumbwheel_info_t 			thumbwheel;						//²¦ÂÖ
-	/* ¼üÊó */
-  int16_t                 mouse_vx;             //Êó±êxÖáËÙ¶È
-  int16_t                 mouse_vy;             //Êó±êyÖáËÙ¶È
-  int16_t                 mouse_vz;             //Êó±êzÖáËÙ¶È
-  float                   mouse_x;         	    //Êó±êxÖáÂË²¨ºóËÙ¶È
-  float                   mouse_y;          	  //Êó±êyÖáÂË²¨ºóËÙ¶È
-  float                   mouse_z;          	  //Êó±êzÖáÂË²¨ºóËÙ¶È
-  key_board_info_t        mouse_btn_l;          //Êó±ê×ó¼ü
-  key_board_info_t        mouse_btn_r;          //Êó±êÓÒ¼ü
-  key_board_info_t        Q;                    //°´¼üQ
-  key_board_info_t        W;                    //°´¼üW
-  key_board_info_t        E;                    //°´¼üE
-  key_board_info_t        R;                    //°´¼üR
-  key_board_info_t        A;                    //°´¼üA
-  key_board_info_t        S;                    //°´¼üS
-  key_board_info_t        D;                    //°´¼üD
-  key_board_info_t        F;                    //°´¼üF
-  key_board_info_t        G;                    //°´¼üG
-  key_board_info_t        Z;                    //°´¼üZ
-  key_board_info_t        X;                    //°´¼üX
-  key_board_info_t        C;                    //°´¼üC
-  key_board_info_t        V;                    //°´¼üV
-  key_board_info_t        B;                    //°´¼üB
-  key_board_info_t        Shift;                //°´¼üShift
-  key_board_info_t        Ctrl;                 //°´¼üCtrl
-	uint16_t								key_v;
-	
-	int16_t		offline_cnt;
-	int16_t		offline_max_cnt;
-} rc_sensor_info_t;
-
-typedef struct rc_sensor_struct {
-	rc_sensor_info_t	*info;
-	drv_uart_t		  	*driver;
-	void				(*init)(struct rc_sensor_struct *self);
-	void				(*update)(struct rc_sensor_struct *self, uint8_t *rxBuf);
-	void				(*check)(struct rc_sensor_struct *self);	
-	void				(*heart_beat)(struct rc_sensor_struct *self);
-	dev_work_state_t	work_state;
-	dev_errno_t			errno;
-	dev_id_t			id;
-	
-	uint8_t  s2_change_flag;
-} rc_sensor_t;
-
-extern rc_sensor_info_t rc_sensor_info;
-extern rc_sensor_t 		rc_sensor;
-
-
-/* Exported functions --------------------------------------------------------*/
-bool RC_IsChannelReset(void);
-void RC_ResetData(rc_sensor_t *rc);
-	
-#endif
+#ifndef __RC_SENSOR_H
+#define __RC_SENSOR_H
+
+/* Includes ------------------------------------------------------------------*/
+#include "rp_config.h"
+
+/* Exported macro ------------------------------------------------------------*/
+#define RC_ONLINE	 (rc_sensor.work_state==DEV_ONLINE)
+#define RC_OFFLINE	 (rc_sensor.work_state==DEV_OFFLINE)
+#define RC_SLEEP      (rc_sensor.work_state==DEV_SLEEP)
+/* ----------------------- RC Channel Definition------------------------------*/
+
+#define    RC_CH_VALUE_MIN       ((uint16_t)364 )
+#define    RC_CH_VALUE_OFFSET    ((uint16_t)1024)
+#define	   RC_CH_VALUE_MAX       ((uint16_t)1684)
+#define	   RC_CH_VALUE_SIDE_WIDTH	((RC_CH_VALUE_MAX-RC_CH_VALUE_MIN)/2)
+
+/* ----------------------- RC Switch Definition-------------------------------*/
+
+#define    RC_SW_UP              ((uint16_t)1)
+#define    RC_SW_MID             ((uint16_t)3)
+#define    RC_SW_DOWN            ((uint16_t)2)
+
+/* ----------------------- RC Thumbwheel Definition-------------------------------*/
+
+#define    RC_TB_UP              ((uint16_t)0)
+#define    RC_TB_MU              ((uint16_t)1)
+#define    RC_TB_MD              ((uint16_t)3)
+#define    RC_TB_DN              ((uint16_t)2)
+
+
+/* ----------------------- PC Key Definition-------------------------------- */
+
+#define    KEY_PRESSED_OFFSET_W        ((uint16_t)0x01<<0)
+#define    KEY_PRESSED_OFFSET_S        ((uint16_t)0x01<<1)
+#define    KEY_PRESSED_OFFSET_A        ((uint16_t)0x01<<2)
+#define    KEY_PRESSED_OFFSET_D        ((uint16_t)0x01<<3)
+#define    KEY_PRESSED_OFFSET_SHIFT    ((uint16_t)0x01<<4)
+#define    KEY_PRESSED_OFFSET_CTRL     ((uint16_t)0x01<<5)
+#define    KEY_PRESSED_OFFSET_Q        ((uint16_t)0x01<<6)
+#define    KEY_PRESSED_OFFSET_E        ((uint16_t)0x01<<7)
+#define    KEY_PRESSED_OFFSET_R        ((uint16_t)0x01<<8)
+#define    KEY_PRESSED_OFFSET_F        ((uint16_t)0x01<<9)
+#define    KEY_PRESSED_OFFSET_G        ((uint16_t)0x01<<10)
+#define    KEY_PRESSED_OFFSET_Z        ((uint16_t)0x01<<11)
+#define    KEY_PRESSED_OFFSET_X        ((uint16_t)0x01<<12)
+#define    KEY_PRESSED_OFFSET_C        ((uint16_t)0x01<<13)
+#define    KEY_PRESSED_OFFSET_V        ((uint16_t)0x01<<14)
+#define    KEY_PRESSED_OFFSET_B        ((uint16_t)0x01<<15)
+
+/* æ£€æµ‹æŒ‰é”®é•¿æŒ‰æ—¶é—´ */
+#define MOUSE_BTN_L_CNT_MAX     833         //ms é¼ æ ‡å·¦é”®ï¼Œå‰å“¨é¢‘çŽ‡
+#define MOUSE_BTN_R_CNT_MAX     500         //ms é¼ æ ‡å³é”®
+#define KEY_Q_CNT_MAX           500         //ms Qé”®
+#define KEY_W_CNT_MAX           400		//ms Wé”®
+#define KEY_E_CNT_MAX           500         //ms Eé”®
+#define KEY_R_CNT_MAX           500         //ms Ré”®
+#define KEY_A_CNT_MAX           400	    //ms Aé”®
+#define KEY_S_CNT_MAX           400	    //ms Sé”®
+#define KEY_D_CNT_MAX           400	    //ms Dé”®
+#define KEY_F_CNT_MAX           500         //ms Fé”®
+#define KEY_G_CNT_MAX           500         //ms Gé”®
+#define KEY_Z_CNT_MAX           500         //ms Zé”®
+#define KEY_X_CNT_MAX           500         //ms Xé”®
+#define KEY_C_CNT_MAX           500         //ms Cé”®
+#define KEY_V_CNT_MAX           500         //ms Vé”®
+#define KEY_B_CNT_MAX           500         //ms Bé”®
+#define KEY_SHIFT_CNT_MAX       500         //ms SHIFTé”®
+#define KEY_CTRL_CNT_MAX        2500        //ms CTRLé”®
+
+/* å¹³æ»‘æ»¤æ³¢æ¬¡æ•° */
+#define REMOTE_SMOOTH_TIMES     10          //é¼ æ ‡å¹³æ»‘æ»¤æ³¢æ¬¡æ•°
+
+/* ----------------------- Function Definition-------------------------------- */
+/* é¥æŽ§æ‘‡æ†é€šé“åç§»å€¼ */
+#define		RC_SW1_VALUE				(rc_sensor_info.s1)
+#define		RC_SW2_VALUE				(rc_sensor_info.s2)
+#define		RC_LEFT_CH_LR_VALUE			(rc_sensor_info.ch2)
+#define		RC_LEFT_CH_UD_VALUE			(rc_sensor_info.ch3)
+#define		RC_RIGH_CH_LR_VALUE			(rc_sensor_info.ch0)
+#define		RC_RIGH_CH_UD_VALUE			(rc_sensor_info.ch1)
+#define		RC_THUMB_WHEEL_VALUE		(rc_sensor_info.thumbwheel)
+
+/* æ£€æµ‹é¥æŽ§å™¨å¼€å…³çŠ¶æ€ */
+#define    IF_RC_SW1_UP      (rc_sensor_info.s1.value == RC_SW_UP)
+#define    IF_RC_SW1_MID     (rc_sensor_info.s1.value == RC_SW_MID)
+#define    IF_RC_SW1_DOWN    (rc_sensor_info.s1.value == RC_SW_DOWN)
+#define    IF_RC_SW2_UP      (rc_sensor_info.s2.value == RC_SW_UP)
+#define    IF_RC_SW2_MID     (rc_sensor_info.s2.value == RC_SW_MID)
+#define    IF_RC_SW2_DOWN    (rc_sensor_info.s2.value == RC_SW_DOWN)
+
+/* èŽ·å–é¼ æ ‡ä¸‰è½´çš„ç§»åŠ¨é€Ÿåº¦ */
+#define    MOUSE_X_MOVE_SPEED    (rc_sensor_info.mouse_vx)
+#define    MOUSE_Y_MOVE_SPEED    (rc_sensor_info.mouse_vy)
+#define    MOUSE_Z_MOVE_SPEED    (rc_sensor_info.mouse_vz)
+
+/* æ£€æµ‹é¼ æ ‡æŒ‰é”®çŠ¶æ€ 
+   æŒ‰ä¸‹ä¸º1ï¼Œæ²¡æŒ‰ä¸‹ä¸º0*/
+#define    MOUSE_PRESSED_LEFT    (rc_sensor_info.mouse_btn_l==1)
+#define    MOUSE_PRESSED_RIGH    (rc_sensor_info.mouse_btn_r==1)
+
+
+/* æ£€æµ‹é”®ç›˜æŒ‰é”®çŠ¶æ€ 
+   è‹¥å¯¹åº”æŒ‰é”®è¢«æŒ‰ä¸‹ï¼Œåˆ™é€»è¾‘è¡¨è¾¾å¼çš„å€¼ä¸º1ï¼Œå¦åˆ™ä¸º0 */
+#define    KEY_PRESSED         (  rc_sensor_info.key_v  )
+#define    KEY_PRESSED_W       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_W)    != 0 )
+#define    KEY_PRESSED_S       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_S)    != 0 )
+#define    KEY_PRESSED_A       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_A)    != 0 )
+#define    KEY_PRESSED_D       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_D)    != 0 )
+#define    KEY_PRESSED_Q       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_Q)    != 0 )
+#define    KEY_PRESSED_E       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_E)    != 0 )
+#define    KEY_PRESSED_G       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_G)    != 0 )
+#define    KEY_PRESSED_X       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_X)    != 0 )
+#define    KEY_PRESSED_Z       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_Z)    != 0 )
+#define    KEY_PRESSED_C       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_C)    != 0 )
+#define    KEY_PRESSED_B       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_B)    != 0 )
+#define    KEY_PRESSED_V       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_V)    != 0 )
+#define    KEY_PRESSED_F       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_F)    != 0 )
+#define    KEY_PRESSED_R       ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_R)    != 0 )
+#define    KEY_PRESSED_CTRL    ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_CTRL) != 0 )
+#define    KEY_PRESSED_SHIFT   ( (rc_sensor_info.key_v & KEY_PRESSED_OFFSET_SHIFT) != 0 )
+
+/* Exported types ------------------------------------------------------------*/
+/* æŒ‰é”®çŠ¶æ€æžšä¸¾ */
+typedef enum
+{
+  release,              //æ”¾æ¾
+  release_to_press,     //ä¸‹é™æ²¿
+  short_press,          //çŸ­æŒ‰
+  long_press,           //é•¿æŒ‰
+  press_to_release,     //ä¸Šå‡æ²¿
+}key_board_status_e;
+
+/* æŒ‰é”®ä¿¡æ¯ */
+typedef struct key_board_info_struct {
+  uint8_t			  value; 			//å€¼
+  key_board_status_e status;            //çŠ¶æ€
+  key_board_status_e last_status;       //ä¸Šä¸€æ¬¡çŠ¶æ€
+	
+  int16_t cnt;                          //å½“å‰è®¡æ•°
+  int16_t cnt_max;                      //è®¡æ•°ä¸Šé™
+}key_board_info_t;
+
+/* æ‹¨æ†ä¿¡æ¯ */
+typedef struct
+{
+  uint8_t value_last;  //ä¸Šä¸€æ¬¡å€¼
+  uint8_t value;       //æ–°å€¼
+  uint8_t status;      //çŠ¶æ€
+}remote_switch_info_t;
+
+/* æ‹¨è½®ä¿¡æ¯ */
+typedef struct
+{
+  int16_t value_last;   //ä¸Šä¸€æ¬¡å€¼
+  int16_t value;        //æ–°å€¼
+  uint8_t step[4];      //æ³¢è½®è·³å˜ä»Ž0å˜1æˆ–1åˆ°0
+  uint8_t step_rising_trigger[4]; //æ³¢è½®è·³å˜çž¬é—´ä¸º1
+	int16_t wheel_count;
+}thumbwheel_info_t;
+
+/* é¥æŽ§å™¨æ‹¨æ†çŠ¶æ€æžšä¸¾ */
+typedef enum 
+{
+  keep_R,         //ä¿æŒ
+  up_R,           //å‘ä¸Šæ‹¨
+  mid_R,          //å‘ä¸­æ‹¨
+  down_R,         //å‘ä¸‹æ‹¨
+}remote_status_e;
+
+typedef struct rc_sensor_info_struct {
+	/* æ‹¨è½®è·³å˜å€¼ */
+	int16_t    tw_step_value[4];
+	
+	/* é¥æŽ§å™¨ */
+	int16_t 	ch0;
+	int16_t 	ch1;
+	int16_t 	ch2;
+	int16_t 	ch3;
+	remote_switch_info_t s1;
+	remote_switch_info_t s2;
+	thumbwheel_info_t 			thumbwheel;						//æ‹¨è½®
+	/* é”®é¼  */
+  int16_t                 mouse_vx;             //é¼ æ ‡xè½´é€Ÿåº¦
+  int16_t                 mouse_vy;             //é¼ æ ‡yè½´é€Ÿåº¦
+  int16_t                 mouse_vz;             //é¼ æ ‡zè½´é€Ÿåº¦
+  float                   mouse_x;         	    //é¼ æ ‡xè½´æ»¤æ³¢åŽé€Ÿåº¦
+  float                   mouse_y;          	  //é¼ æ ‡yè½´æ»¤æ³¢åŽé€Ÿåº¦
+  float                   mouse_z;          	  //é¼ æ ‡zè½´æ»¤æ³¢åŽé€Ÿåº¦
+  key_board_info_t        mouse_btn_l;          //é¼ æ ‡å·¦é”®
+  key_board_info_t        mouse_btn_r;          //é¼ æ ‡å³é”®
+  key_board_info_t        Q;                    //æŒ‰é”®Q
+  key_board_info_t        W;                    //æŒ‰é”®W
+  key_board_info_t        E;                    //æŒ‰é”®E
+  key_board_info_t        R;                    //æŒ‰é”®R
+  key_board_info_t        A;                    //æŒ‰é”®A
+  key_board_info_t        S;                    //æŒ‰é”®S
+  key_board_info_t        D;                    //æŒ‰é”®D
+  key_board_info_t        F;                    //æŒ‰é”®F
+  key_board_info_t        G;                    //æŒ‰é”®G
+  key_board_info_t        Z;                    //æŒ‰é”®Z
+  key_board_info_t        X;                    //æŒ‰é”®X
+  key_board_info_t        C;                    //æŒ‰é”®C
+  key_board_info_t        V;                    //æŒ‰é”®V
+  key_board_info_t        B;                    //æŒ‰é”®B
+  key_board_info_t        Shift;                //æŒ‰é”®Shift
+  key_board_info_t        Ctrl;                 //æŒ‰é”®Ctrl
+	uint16_t								key_v;
+	
+	int16_t		offline_cnt;
+	int16_t		offline_max_cnt;
+} rc_sensor_info_t;
+
+typedef struct rc_sensor_struct {
+	rc_sensor_info_t	*info;
+	drv_uart_t		  	*driver;
+	void				(*init)(struct rc_sensor_struct *self);
+	void				(*update)(struct rc_sensor_struct *self, uint8_t *rxBuf);
+	void				(*check)(struct rc_sensor_struct *self);	
+	void				(*heart_beat)(struct rc_sensor_struct *self);
+	dev_work_state_t	work_state;
+	dev_errno_t			errno;
+	dev_id_t			id;
+	
+	uint8_t  s2_change_flag;
+} rc_sensor_t;
+
+extern rc_sensor_info_t rc_sensor_info;
+extern rc_sensor_t 		rc_sensor;
+
+
+/* Exported functions --------------------------------------------------------*/
+bool RC_IsChannelReset(void);
+void RC_ResetData(rc_sensor_t *rc);
+	
+#endif

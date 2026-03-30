@@ -1,123 +1,123 @@
-/* Includes ------------------------------------------------------------------*/
-#include "drv_flash.h"
-
-#include "string.h"
-/* Private macro -------------------------------------------------------------*/
-/* Private function prototypes -----------------------------------------------*/
-/* Private typedef -----------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-/* Exported variables --------------------------------------------------------*/
-
-/* Private functions ---------------------------------------------------------*/
-/* Exported functions --------------------------------------------------------*/
-
-/**
-  * @brief  ¶ÁÈ¡flashÊı¾İ
-  * @param  addr  flashÖĞ±»¶ÁÈ¡Êı¾İµÄÆğÊ¼µØÖ·
-  * @param  buf	  ´æ´¢Êı¾İµÄÆğÊ¼µØÖ·
-  * @param  len		¶ÁÈ¡Êı¾İ³¤¶È,ÒÔ×Ö½ÚÎªµ¥Î»
-  */
-void Flash_ReadData(uint32_t addr, uint32_t *buf, uint16_t len)
-{
-	memcpy(buf, (void*)addr, len);
-}
-
-/**
-  * @brief  ½«Êı¾İĞ´Èëflash,ÒÔ×Ö½ÚÎªµ¥Î»
-  * @param  addr  flashÖĞĞ´ÈëÊı¾İµÄÆğÊ¼µØÖ·
-  * @param  data  ±»Ğ´ÈëÊı¾İµÄÆğÊ¼µØÖ·
-  * @param  num		Ğ´ÈëÊı¾İÊıÁ¿
-  */
-void Flash_WriteByteData(uint32_t addr,uint8_t *data,uint16_t num)
-{
-	HAL_FLASH_Unlock();
-	for(uint16_t i=0;i<num;i++)
-	{
-		HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, addr+i, data[i]);
-	}
-	HAL_FLASH_Lock();
-}
-
-/**
-  * @brief  ½«Êı¾İĞ´Èëflash,ÒÔ°ë×ÖÎªµ¥Î»
-  * @param  addr  flashÖĞĞ´ÈëÊı¾İµÄÆğÊ¼µØÖ·
-  * @param  data  ±»Ğ´ÈëÊı¾İµÄÆğÊ¼µØÖ·
-  * @param  num		Ğ´ÈëÊı¾İÊıÁ¿
-  */
-void Flash_WriteHalfWordData(uint32_t addr,uint16_t *data,uint16_t num)
-{
-	HAL_FLASH_Unlock();
-	for(uint16_t i=0;i<num;i++)
-	{
-		HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, addr+2*i, data[i]);
-	}
-	HAL_FLASH_Lock();
-}
-
-/**
-  * @brief  ½«Êı¾İĞ´Èëflash,ÒÔ×ÖÎªµ¥Î»
-  * @param  addr  flashÖĞĞ´ÈëÊı¾İµÄÆğÊ¼µØÖ·
-  * @param  data  ±»Ğ´ÈëÊı¾İµÄÆğÊ¼µØÖ·
-  * @param  num		Ğ´ÈëÊı¾İÊıÁ¿
-  */
-void Flash_WriteWordData(uint32_t addr,uint32_t *data,uint16_t num)
-{
-	HAL_FLASH_Unlock();
-	for(uint16_t i=0;i<num;i++)
-	{
-		HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, addr+4*i, data[i]);
-	}
-	HAL_FLASH_Lock();
-}
-
-/**
-  * @brief  ½«Êı¾İĞ´Èëflash,ÒÔË«×ÖÎªµ¥Î»
-  * @param  addr  flashÖĞĞ´ÈëÊı¾İµÄÆğÊ¼µØÖ·
-  * @param  data  ±»Ğ´ÈëÊı¾İµÄÆğÊ¼µØÖ·
-  * @param  num		Ğ´ÈëÊı¾İÊıÁ¿
-  */
-void Flash_WriteDoubleWordData(uint32_t addr,uint64_t *data,uint16_t num)
-{
-	HAL_FLASH_Unlock();
-	for(uint16_t i=0;i<num;i++)
-	{
-		HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr+8*i, data[i]);
-	}
-	HAL_FLASH_Lock();
-}
-
-/**
-  * @brief  ²Á³ıÉÈÇø(½«Êı¾İĞ´ÈëflashÖĞÔ­ÏÈÒÑÓĞÊı¾İµÄÉÈÇøÇ°ĞèÒª²Á³ıÉÈÇø)
-  * @param  SectorNum  ĞèÒª²Á³ıµÄÄ¿±êÉÈÇø,È¡Öµ·¶Î§Îª0ÖÁ11(×¢Òâ²»ÒªÕ¼ÓÃÒÑ¾­±»³ÌĞòÕ¼ÓÃÁËµÄÉÈÇø)
-  * @retval uint32_t	sectorError
-	*					Èç¹û±¾´Îflash²Á³ı²úÉúÁË´íÎó£¬Ôò·¢Éú²Á³ı´íÎóµÄÒ³ÃæºÅ´æ´¢ÔÚSectorErrorÖĞ
-  */
-uint32_t Flash_EraseSector(uint32_t SectorNum)
-{
-	FLASH_EraseInitTypeDef FLASH_Erase;
-	uint32_t sectorError = 0;
-	
-	HAL_FLASH_Unlock();
-	FLASH_Erase.TypeErase = FLASH_TYPEERASE_SECTORS;
-	FLASH_Erase.Banks = FLASH_BANK_1;
-	FLASH_Erase.Sector = SectorNum;
-	FLASH_Erase.NbSectors = 1;
-	FLASH_Erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-	HAL_FLASHEx_Erase(&FLASH_Erase, &sectorError);
-	HAL_FLASH_Lock();
-	
-	return sectorError;
-}
-
-/**
-  * @brief  ²Á³ıÉÈÇø11
-  */
-uint32_t Flash_EraseSector11(void)
-{
-	uint32_t sectorError;
-	
-	sectorError = Flash_EraseSector(11);
-	
-	return sectorError;
-}
-
+/* Includes ------------------------------------------------------------------*/
+#include "drv_flash.h"
+
+#include "string.h"
+/* Private macro -------------------------------------------------------------*/
+/* Private function prototypes -----------------------------------------------*/
+/* Private typedef -----------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+/* Exported variables --------------------------------------------------------*/
+
+/* Private functions ---------------------------------------------------------*/
+/* Exported functions --------------------------------------------------------*/
+
+/**
+  * @brief  è¯»å–flashæ•°æ®
+  * @param  addr  flashä¸­è¢«è¯»å–æ•°æ®çš„èµ·å§‹åœ°å€
+  * @param  buf	  å­˜å‚¨æ•°æ®çš„èµ·å§‹åœ°å€
+  * @param  len		è¯»å–æ•°æ®é•¿åº¦,ä»¥å­—èŠ‚ä¸ºå•ä½
+  */
+void Flash_ReadData(uint32_t addr, uint32_t *buf, uint16_t len)
+{
+	memcpy(buf, (void*)addr, len);
+}
+
+/**
+  * @brief  å°†æ•°æ®å†™å…¥flash,ä»¥å­—èŠ‚ä¸ºå•ä½
+  * @param  addr  flashä¸­å†™å…¥æ•°æ®çš„èµ·å§‹åœ°å€
+  * @param  data  è¢«å†™å…¥æ•°æ®çš„èµ·å§‹åœ°å€
+  * @param  num		å†™å…¥æ•°æ®æ•°é‡
+  */
+void Flash_WriteByteData(uint32_t addr,uint8_t *data,uint16_t num)
+{
+	HAL_FLASH_Unlock();
+	for(uint16_t i=0;i<num;i++)
+	{
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, addr+i, data[i]);
+	}
+	HAL_FLASH_Lock();
+}
+
+/**
+  * @brief  å°†æ•°æ®å†™å…¥flash,ä»¥åŠå­—ä¸ºå•ä½
+  * @param  addr  flashä¸­å†™å…¥æ•°æ®çš„èµ·å§‹åœ°å€
+  * @param  data  è¢«å†™å…¥æ•°æ®çš„èµ·å§‹åœ°å€
+  * @param  num		å†™å…¥æ•°æ®æ•°é‡
+  */
+void Flash_WriteHalfWordData(uint32_t addr,uint16_t *data,uint16_t num)
+{
+	HAL_FLASH_Unlock();
+	for(uint16_t i=0;i<num;i++)
+	{
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, addr+2*i, data[i]);
+	}
+	HAL_FLASH_Lock();
+}
+
+/**
+  * @brief  å°†æ•°æ®å†™å…¥flash,ä»¥å­—ä¸ºå•ä½
+  * @param  addr  flashä¸­å†™å…¥æ•°æ®çš„èµ·å§‹åœ°å€
+  * @param  data  è¢«å†™å…¥æ•°æ®çš„èµ·å§‹åœ°å€
+  * @param  num		å†™å…¥æ•°æ®æ•°é‡
+  */
+void Flash_WriteWordData(uint32_t addr,uint32_t *data,uint16_t num)
+{
+	HAL_FLASH_Unlock();
+	for(uint16_t i=0;i<num;i++)
+	{
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, addr+4*i, data[i]);
+	}
+	HAL_FLASH_Lock();
+}
+
+/**
+  * @brief  å°†æ•°æ®å†™å…¥flash,ä»¥åŒå­—ä¸ºå•ä½
+  * @param  addr  flashä¸­å†™å…¥æ•°æ®çš„èµ·å§‹åœ°å€
+  * @param  data  è¢«å†™å…¥æ•°æ®çš„èµ·å§‹åœ°å€
+  * @param  num		å†™å…¥æ•°æ®æ•°é‡
+  */
+void Flash_WriteDoubleWordData(uint32_t addr,uint64_t *data,uint16_t num)
+{
+	HAL_FLASH_Unlock();
+	for(uint16_t i=0;i<num;i++)
+	{
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr+8*i, data[i]);
+	}
+	HAL_FLASH_Lock();
+}
+
+/**
+  * @brief  æ“¦é™¤æ‰‡åŒº(å°†æ•°æ®å†™å…¥flashä¸­åŸå…ˆå·²æœ‰æ•°æ®çš„æ‰‡åŒºå‰éœ€è¦æ“¦é™¤æ‰‡åŒº)
+  * @param  SectorNum  éœ€è¦æ“¦é™¤çš„ç›®æ ‡æ‰‡åŒº,å–å€¼èŒƒå›´ä¸º0è‡³11(æ³¨æ„ä¸è¦å ç”¨å·²ç»è¢«ç¨‹åºå ç”¨äº†çš„æ‰‡åŒº)
+  * @retval uint32_t	sectorError
+	*					å¦‚æœæœ¬æ¬¡flashæ“¦é™¤äº§ç”Ÿäº†é”™è¯¯ï¼Œåˆ™å‘ç”Ÿæ“¦é™¤é”™è¯¯çš„é¡µé¢å·å­˜å‚¨åœ¨SectorErrorä¸­
+  */
+uint32_t Flash_EraseSector(uint32_t SectorNum)
+{
+	FLASH_EraseInitTypeDef FLASH_Erase;
+	uint32_t sectorError = 0;
+	
+	HAL_FLASH_Unlock();
+	FLASH_Erase.TypeErase = FLASH_TYPEERASE_SECTORS;
+	FLASH_Erase.Banks = FLASH_BANK_1;
+	FLASH_Erase.Sector = SectorNum;
+	FLASH_Erase.NbSectors = 1;
+	FLASH_Erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+	HAL_FLASHEx_Erase(&FLASH_Erase, &sectorError);
+	HAL_FLASH_Lock();
+	
+	return sectorError;
+}
+
+/**
+  * @brief  æ“¦é™¤æ‰‡åŒº11
+  */
+uint32_t Flash_EraseSector11(void)
+{
+	uint32_t sectorError;
+	
+	sectorError = Flash_EraseSector(11);
+	
+	return sectorError;
+}
+

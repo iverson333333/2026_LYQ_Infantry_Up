@@ -1,43 +1,43 @@
-#ifndef __chassis_H_
-#define __chassis_H_
-//#include "communicate_protocol.h"
-#include "rc_sensor.h"
-#include "rc_protocol.h"
-#include "communicate.h"
-#include "car.h"
-typedef enum
-{
-	CHASSIS_SPEED_PID = 0,//±ÕËÙ¶È»·
-	CHASSIS_POSITION_PID = 1,//±ÕÎ»ÖÃ»·
-}chassis_pid_mode_e;
-
-/** 
-  * @brief  µ×ÅÌ»ù±¾ĞÅÏ¢¶¨Òå
-  */ 
-typedef struct __attribute__((packed))  
-{
-	int16_t target_front_speed;//Ä¿±êÇ°½øËÙ¶È
-	int16_t target_right_speed;//Ä¿±êÓÒÒÆËÙ¶È
-	int16_t target_cycle_speed;//Ä¿±êĞı×ªËÙ¶È
-
-}chassis_base_info_t;
-
-typedef struct chassis_class_t
-{	
-//	command_t *cmd_180;//×ªÍ·ĞÅÏ¢
-//	command_t *cmd_auto_lob;//Ò»¼üµõÉä
-//	command_t *cmd_normal_lob;//Ò»¼üÆÕÍ¨µõÉä
-//	command_t *cmd_oblique_lob;//Ò»¼üÆÕÍ¨µõÉä
-//	command_t *cmd_timer_mec_outpost;
-	chassis_pid_mode_e pid_mode;//pidÄ£Ê½£¬Î»ÖÃ»·Ä¿±êÖµÔÚÏÂÖ÷¿Ø¸üĞÂ
-
-	chassis_base_info_t  base_info;
-		
-	void (*work)(struct chassis_class_t *chassis);
-
-}chassis_t;
-
-extern chassis_t chassis;
-void Chassis_Mec_Update(chassis_t *chassis, uint8_t ctrl_mode);
-void Chassis_Work(chassis_t *chassis);
+#ifndef __chassis_H_
+#define __chassis_H_
+//#include "communicate_protocol.h"
+#include "rc_sensor.h"
+#include "rc_protocol.h"
+#include "communicate.h"
+#include "car.h"
+typedef enum
+{
+	CHASSIS_SPEED_PID = 0,//é—­é€Ÿåº¦ç¯
+	CHASSIS_POSITION_PID = 1,//é—­ä½ç½®ç¯
+}chassis_pid_mode_e;
+
+/** 
+  * @brief  åº•ç›˜åŸºæœ¬ä¿¡æ¯å®šä¹‰
+  */ 
+typedef struct __attribute__((packed))  
+{
+	int16_t target_front_speed;//ç›®æ ‡å‰è¿›é€Ÿåº¦
+	int16_t target_right_speed;//ç›®æ ‡å³ç§»é€Ÿåº¦
+	int16_t target_cycle_speed;//ç›®æ ‡æ—‹è½¬é€Ÿåº¦
+
+}chassis_base_info_t;
+
+typedef struct chassis_class_t
+{	
+//	command_t *cmd_180;//è½¬å¤´ä¿¡æ¯
+//	command_t *cmd_auto_lob;//ä¸€é”®åŠå°„
+//	command_t *cmd_normal_lob;//ä¸€é”®æ™®é€šåŠå°„
+//	command_t *cmd_oblique_lob;//ä¸€é”®æ™®é€šåŠå°„
+//	command_t *cmd_timer_mec_outpost;
+	chassis_pid_mode_e pid_mode;//pidæ¨¡å¼ï¼Œä½ç½®ç¯ç›®æ ‡å€¼åœ¨ä¸‹ä¸»æ§æ›´æ–°
+
+	chassis_base_info_t  base_info;
+		
+	void (*work)(struct chassis_class_t *chassis);
+
+}chassis_t;
+
+extern chassis_t chassis;
+void Chassis_Mec_Update(chassis_t *chassis, uint8_t ctrl_mode);
+void Chassis_Work(chassis_t *chassis);
 #endif

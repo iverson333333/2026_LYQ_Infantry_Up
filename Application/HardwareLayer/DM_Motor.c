@@ -1,730 +1,730 @@
-/**
- * @file        DM_Motor.c
- * @author      2025_YZJ
- * @Version     V1.0
- * @date        8-Febraruary-2025
- * @brief       ´ïÃëmit¿ØÖÆµç»ú°ü
- */
-
-/* Includes ------------------------------------------------------------------*/
-#include "DM_Motor.h"
-
-static uint8_t Motor_Command[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFC};
-
-static void Motor_Send_Data(Motor_DM_t *motor, uint8_t *buf);
-static void Motor_SetControlPara(Motor_DM_t *motor);
-static uint16_t float_to_uint_(float x, float x_min, float x_max, uint8_t bits);
-static float uint_to_float_(uint16_t x_int, float x_min, float x_max, uint8_t bits);
-static void Motor_Send_Command(Motor_DM_t *motor, Motor_MIT_Command_e Command);
-static void Angle_Sum_Cal(Motor_DM_t *motor);
-static void Motor_ERR_Check(Motor_DM_t *motor, uint8_t err_word);
-static void Group_Motor_Heartbeat(Motor_DM_Group_t *group);
-
-/*..........................................µ¥µç»ú..........................................*/
-/**
- * @brief          µ¥µç»úĞ¶Á¦
- * @param[in]      Motor_DM_t *motor     µç»ú±¾Ìå
- * @retval         none
- */
-void DM_Single_Motor_Sleep(Motor_DM_t *motor)
-{
-	if (motor != NULL)
-	{
-		motor->tx_info->torque = 0;
-		motor->tx_info->Kd = 0;
-		motor->tx_info->Kp = 0;
-	}
-}
-
-/**
- * @brief          µ¥µç»úÖÃÁã±àÂëÆ÷
- * @param[in]      Motor_DM_t *motor     µç»ú±¾Ìå
- * @retval         none
- */
-void DM_Single_Motor_ZeroPosSensor(Motor_DM_t *motor)
-{
-	if (motor != NULL)
-	{
-		motor->single_sleep(motor); // ÏÈ¶Ôµç»úĞ¶Á¦
-
-		Motor_Send_Command(motor, Zero_Position_Sensor);
-	}
-}
-
-/**
- * @brief          µ¥µç»ú¿ØÖÆÊä³ö×ª¾Ø,º¬ÓĞCAN·¢ËÍ²Ù×÷
- * @param[in]      Motor_DM_t *motor     µç»ú±¾Ìå
- * @retval         none
- */
-void DM_Single_Motor_Set_Torque(Motor_DM_t *motor)
-{
-	if (motor != NULL)
-	{
-		if (motor->state->motor_state == Motor_Unenable)
-		{
-			motor->state->motor_state = Motor_Enable;
-			Motor_Send_Command(motor, Enter_Motor_Mode);
-		}
-		else
-		{
-			Motor_DM_Tx_Info_t *motor_tx_info = motor->tx_info;
-			motor_tx_info->Kp = 0;
-			motor_tx_info->Kd = 0;
-			Motor_SetControlPara(motor);
-			motor->tx_info->torque = 0;
-		}
-	}
-}
-
-/**
- * @brief          µ¥µç»ú¿ØÖÆËÙ¶È,ĞèÒª×ÔĞĞÉèÖÃkd\target_speed\torque,º¬ÓĞCAN·¢ËÍ²Ù×÷
- * @param[in]      Motor_DM_t *motor     µç»ú±¾Ìå
- * @retval         none
- */
-void DM_Single_Motor_Set_Speed(Motor_DM_t *motor)
-{
-	if (motor != NULL)
-	{
-		if (motor->state->motor_state == Motor_Unenable)
-		{
-			motor->state->motor_state = Motor_Enable;
-			Motor_Send_Command(motor, Enter_Motor_Mode);
-		}
-		else
-		{
-			Motor_DM_Tx_Info_t *motor_tx_info = motor->tx_info;
-			motor_tx_info->Kp = 0;
-			Motor_SetControlPara(motor);
-		}
-	}
-}
-
-/**
- * @brief          µ¥µç»ú¿ØÖÆ½Ç¶È,ĞèÒª×ÔĞĞÉèÖÃkp\target_angle\kd\target_speed\torque,º¬ÓĞCAN·¢ËÍ²Ù×÷
- * @param[in]      Motor_DM_t *motor     µç»ú±¾Ìå
- * @retval         none
- */
-void DM_Single_Motor_Set_Angle(Motor_DM_t *motor)
-{
-	if (motor != NULL)
-	{
-		if (motor->state->motor_state == Motor_Unenable)
-		{
-			motor->state->motor_state = Motor_Enable;
-			Motor_Send_Command(motor, Enter_Motor_Mode);
-			Motor_Send_Command(motor, Enter_Motor_Mode);
-		}
-		else
-		{
-			motor->tx_info->target_speed = 0;
-			Motor_SetControlPara(motor);
-		}
-	}
-}
-
-void Motor_Set_Angle_Position_DM(Motor_DM_t *motor)
-{
-	pid_ctrl_t *my_angle_ctrl = motor->ctrl->position_out;
-	pid_ctrl_t *my_speed_ctrl = motor->ctrl->position_inn;
-	/*Íâ»·¼ÆËã*/
-	if (motor->ctrl->Angle_Input_Flag == false)
-	{
-		my_angle_ctrl->measure = motor->rx_info->motor_angle_sum;
-	}
-	my_angle_ctrl->err = my_angle_ctrl->target - my_angle_ctrl->measure;
-	//	if(motor->ctrl->Nearest_Return == true)
-	//	{
-	//		if(motor->ctrl->Angle_Input_Flag == false)
-	//		{
-	if (my_angle_ctrl->err < P_MAX_8009)
-	{
-		my_angle_ctrl->err += 2.0f * PI;
-	}
-	if (my_angle_ctrl->err > P_MIN_8009)
-	{
-		my_angle_ctrl->err -= 2.0f * PI;
-	}
-	//		}
-	//		else
-	//		{
-	//			if(my_angle_ctrl->err < -180.f)
-	//			{
-	//				my_angle_ctrl->err += 360.f;
-	//			}
-	//			if(my_angle_ctrl->err > 180.f)
-	//			{
-	//				my_angle_ctrl->err -= 360.f;
-	//			}
-	//		}
-	//	}
-	single_pid_ctrl(my_angle_ctrl);
-
-	my_speed_ctrl->target = my_angle_ctrl->out;
-	if (motor->ctrl->Speed_Input_Flag == false)
-		my_speed_ctrl->measure = motor->rx_info->speed;
-	my_speed_ctrl->err = my_speed_ctrl->target - my_speed_ctrl->measure;
-	single_pid_ctrl(my_speed_ctrl);
-	motor->tx_info->torque = my_speed_ctrl->out;
-}
-
-void Motor_Set_Speed_Position_DM(Motor_DM_t *motor)
-{
-	pid_ctrl_t *my_speed_ctrl = motor->ctrl->speed_ctrl;
-
-	my_speed_ctrl->measure = motor->rx_info->speed;
-	my_speed_ctrl->err = my_speed_ctrl->target - my_speed_ctrl->measure;
-	single_pid_ctrl(my_speed_ctrl);
-	motor->tx_info->torque = my_speed_ctrl->out;
-}
-
-void DM_Single_Motor_Set(Motor_DM_t *motor)
-{
-	if (motor != NULL)
-	{
-		if (motor->state->motor_state == Motor_Unenable)
-		{
-			motor->state->motor_state = Motor_Enable;
-			Motor_Send_Command(motor, Enter_Motor_Mode);
-			Motor_Send_Command(motor, Enter_Motor_Mode);
-		}
-	}
-}
-
-/**
- * @brief          µç»úCANÖĞ¶Ï½ÓÊÕÊı¾İ´¦Àí
- * @param[in]      Motor_DM_t *motor      µç»ú±¾Ìå
- * @param[in]      uint8_t *rxBuf						CAN½ÓÊÕÊı¾İ°ü
- * @retval         none
- */
-static void Motor_ReceiveData(Motor_DM_t *motor, uint8_t *rxBuf)
-{
-	static float pmin, pmax, vmax, vmin, tmax, tmin;
-	if (motor->type == dm_6006)
-	{
-		pmax = P_MAX_6006;
-		pmin = P_MIN_6006;
-		vmax = V_MAX_6006;
-		vmin = V_MIN_6006;
-		tmax = T_MAX_6006;
-		tmin = T_MIN_6006;
-	}
-	else if (motor->type == dm_4310)
-	{
-		pmax = P_MAX_4310;
-		pmin = P_MIN_4310;
-		vmax = V_MAX_4310;
-		vmin = V_MIN_4310;
-		tmax = T_MAX_4310;
-		tmin = T_MIN_4310;
-	}
-	else /*(motor->type == leg_8009)*/
-	{
-		pmax = P_MAX_8009;
-		pmin = P_MIN_8009;
-		vmax = V_MAX_8009;
-		vmin = V_MIN_8009;
-		tmax = T_MAX_8009;
-		tmin = T_MIN_8009;
-	}
-
-	Motor_DM_Rx_Info_t *motor_rx_info = motor->rx_info;
-	Motor_ERR_Check(motor, rxBuf[0] >> 4);
-	motor_rx_info->motor_angle = uint_to_float((uint16_t)((rxBuf[1] << 8) | rxBuf[2]), pmin, pmax, 16);
-	motor_rx_info->speed = uint_to_float((uint16_t)((rxBuf[3] << 4) | (rxBuf[4] >> 4)), vmin, vmax, 12);
-	if (my_abs(motor_rx_info->speed) == 0.0109901428f)
-	{
-		motor_rx_info->speed = 0;
-	}
-	motor_rx_info->torque = uint_to_float((uint16_t)(((rxBuf[4] & 0x0F) << 8) | rxBuf[5]), tmin, tmax, 12);
-	Angle_Sum_Cal(motor);
-	motor->state->offline_cnt = 0;
-
-	motor_rx_info->ERR = (rxBuf[0] >> 4) & 0x0F;
-	motor_rx_info->T_MOS = rxBuf[6];
-	motor_rx_info->T_Rotor = rxBuf[7];
-}
-
-/**
- * @brief          µ¥µç»úĞÄÌø°ü
- * @param[in]      Motor_HT_t *motor    µç»ú±¾Ìå
- * @retval         none
- */
-static void DM_Motor_Hearbeat(Motor_DM_t *motor)
-{
-	motor->state->offline_cnt++;
-
-	if (motor->state->offline_cnt > motor->state->offline_cnt_max)
-	{
-		motor->state->offline_cnt = motor->state->offline_cnt_max;
-		motor->state->status = DEV_OFFLINE;
-		motor->state->motor_state = Motor_Unenable;
-	}
-	else
-	{
-		if (motor->state->status == DEV_OFFLINE)
-			motor->state->status = DEV_ONLINE;
-	}
-}
-
-/**
- * @brief          µ¥µç»ú³õÊ¼»¯
- * @param[in]      Motor_DM_t *motor     µç»ú±¾Ìå
- * @retval         none
- */
-void DM_Single_Motor_Init(Motor_DM_t *motor)
-{
-	motor->single_sleep = DM_Single_Motor_Sleep;
-	motor->single_set_torque = DM_Single_Motor_Set_Torque;
-	motor->single_set_speed = DM_Single_Motor_Set_Speed;
-	motor->single_set_angle = DM_Single_Motor_Set_Angle;
-	motor->rx = Motor_ReceiveData;
-	motor->single_heart_beat = DM_Motor_Hearbeat;
-	/*¿ªÆôµç»ú¿ØÖÆ*/
-	motor->state->motor_state = Motor_Unenable;
-	motor->state->last_motor_state = Motor_Unenable;
-	motor->state->offline_cnt_max = 100;
-	motor->rx_info->motor_angle_sum = 0;
-}
-/*..........................................µç»ú×é..........................................*/
-/**
- * @brief          ¶àµç»ú£¨1~4¸ö£©µç»ú¿ØÖÆÊä³ö×ª¾Ø,º¬·¢ËÍ
- * @param[in]      Motor_DM_Group_t *group     µç»ú×é
- * @retval         none
- */
-static void Group_Motor_Set_Torque(Motor_DM_Group_t *group)
-{
-	static uint8_t rx_num = 0;
-
-	if (group->motor[rx_num] != NULL)
-	{
-		group->motor[rx_num]->single_set_torque(group->motor[rx_num]);
-		rx_num++;
-	}
-	if (rx_num >= group->motor_num)
-	{
-		rx_num = 0;
-	}
-}
-
-/**
- * @brief          µç»ú×éĞ¶Á¦
- * @param[in]      Motor_DM_Group_t *group     µç»ú×é
- * @retval         none
- */
-static void Group_Motor_Sleep(Motor_DM_Group_t *group)
-{
-	if (group->motor[0] != NULL)
-	{
-		group->motor[0]->single_sleep(group->motor[0]);
-	}
-	if (group->motor[1] != NULL)
-	{
-		group->motor[1]->single_sleep(group->motor[1]);
-	}
-	if (group->motor[2] != NULL)
-	{
-		group->motor[2]->single_sleep(group->motor[2]);
-	}
-	if (group->motor[3] != NULL)
-	{
-		group->motor[3]->single_sleep(group->motor[3]);
-	}
-}
-
-/**
- * @brief          µç»ú×éĞÄÌø°ü
- * @param[in]      Motor_DM_Group_t *group     µç»ú×é
- * @retval         none
- */
-static void Group_Motor_Heartbeat(Motor_DM_Group_t *group)
-{
-	if (group->motor[0] != NULL)
-	{
-		group->motor[0]->single_heart_beat(group->motor[0]);
-	}
-
-	if (group->motor[1] != NULL)
-	{
-		group->motor[1]->single_heart_beat(group->motor[1]);
-	}
-
-	if (group->motor[2] != NULL)
-	{
-		group->motor[2]->single_heart_beat(group->motor[2]);
-	}
-
-	if (group->motor[3] != NULL)
-	{
-		group->motor[3]->single_heart_beat(group->motor[3]);
-	}
-}
-
-/**
- * @brief          µç»ú×é³õÊ¼»¯
- * @param[in]      Motor_DM_Group_t *group     µç»ú×é
- * @retval         none
- */
-void Group_Motor_Init(Motor_DM_Group_t *group)
-{
-	uint8_t num_init = 0;
-	if (group->motor[0] != NULL)
-	{
-		group->motor[0]->single_init = DM_Single_Motor_Init;
-		group->motor[0]->single_init(group->motor[0]);
-		num_init++;
-	}
-
-	if (group->motor[1] != NULL)
-	{
-		group->motor[1]->single_init = DM_Single_Motor_Init;
-		group->motor[1]->single_init(group->motor[1]);
-		num_init++;
-	}
-
-	if (group->motor[2] != NULL)
-	{
-		group->motor[2]->single_init = DM_Single_Motor_Init;
-		group->motor[2]->single_init(group->motor[2]);
-		num_init++;
-	}
-
-	if (group->motor[3] != NULL)
-	{
-		group->motor[3]->single_init = DM_Single_Motor_Init;
-		group->motor[3]->single_init(group->motor[3]);
-		num_init++;
-	}
-
-	group->motor_num = num_init;
-	group->group_set_torque = Group_Motor_Set_Torque;
-	group->group_heartbeat = Group_Motor_Heartbeat;
-	group->group_sleep = Group_Motor_Sleep;
-}
-
-/*..........................................¹¤¾ßº¯Êı..........................................*/
-/**
- * @brief          ÕûºÏ²¢·¢ËÍµç»úÃüÁî±¨ÎÄ
- * @param          Motor_DM_t *motor
- * @param[in]      Motor_DM_Command_e Command
- * @retval         none
- */
-static void Motor_Send_Command(Motor_DM_t *motor, Motor_MIT_Command_e Command)
-{
-	switch (Command)
-	{
-	case Enter_Motor_Mode:
-		Motor_Command[7] = 0xFC;
-		break;
-	case Exit_Motor_Mode:
-		Motor_Command[7] = 0xFD;
-		break;
-	case Zero_Position_Sensor:
-		Motor_Command[7] = 0xFE;
-		break;
-	default:
-		break;
-	}
-	Motor_Send_Data(motor, Motor_Command);
-}
-
-/**
- * @brief          ¸ù¾İ½á¹¹ÌåĞÅÏ¢·¢ËÍ±¨ÎÄ
- * @param          Motor_DM_t *motor
- * @param          uint8_t* buf Òª·¢ËÍµÄ±¨ÎÄĞÅÏ¢
- * @retval         none
- */
-static void Motor_Send_Data(Motor_DM_t *motor, uint8_t *buf)
-{
-	Motor_DM_Born_Info_t *motor_born_info = motor->born_info;
-
-	CAN_SendData(motor_born_info->hcan, motor_born_info->txId, buf);
-}
-
-/**
- * @brief          ¸ù¾İ·¢ËÍµÄ±¨ÎÄĞÅÏ¢ÉèÖÃ±¨ÎÄ²¢·¢ËÍ
- * @param          Motor_DM_t *motor
- * @retval         none
- */
-static void Motor_SetControlPara(Motor_DM_t *motor)
-{
-	Motor_DM_Tx_Info_t *motor_tx_info = motor->tx_info;
-	static float pmin, pmax, vmax, vmin, cmax, cmin, tmax, tmin;
-	if (motor->type == dm_6006)
-	{
-		pmax = P_MAX_6006;
-		pmin = P_MIN_6006;
-		vmax = V_MAX_6006;
-		vmin = V_MIN_6006;
-		cmax = C_MAX_6006;
-		cmin = C_MIN_6006;
-		tmax = T_MAX_6006;
-		tmin = T_MIN_6006;
-	}
-	else if (motor->type == dm_4310)
-	{
-		pmax = P_MAX_4310;
-		pmin = P_MIN_4310;
-		vmax = V_MAX_4310;
-		vmin = V_MIN_4310;
-		cmax = C_MAX_4310;
-		cmin = C_MIN_4310;
-		tmax = T_MAX_4310;
-		tmin = T_MIN_4310;
-	}
-	else /*(motor->type == leg_8009)*/
-	{
-		pmax = P_MAX_8009;
-		pmin = P_MIN_8009;
-		vmax = V_MAX_8009;
-		vmin = V_MIN_8009;
-		cmax = C_MAX_8009;
-		cmin = C_MIN_8009;
-		tmax = T_MAX_8009;
-		tmin = T_MIN_8009;
-	}
-
-	uint16_t p, v, kp, kd, t;
-	uint8_t *buf = motor_tx_info->single_tx_buff;
-
-	/* ÏŞÖÆÊäÈëµÄ²ÎÊıÔÚ¶¨ÒåµÄ·¶Î§ÄÚ */
-	motor_tx_info->target_angle = constrain(motor_tx_info->target_angle, pmin, pmax);
-	motor_tx_info->target_speed = constrain(motor_tx_info->target_speed, vmin, vmax);
-	motor_tx_info->Kp = constrain(motor_tx_info->Kp, KP_MIN, KP_MAX);
-	motor_tx_info->Kd = constrain(motor_tx_info->Kd, KD_MIN, KD_MAX);
-	motor_tx_info->torque = constrain(motor_tx_info->torque, tmin, tmax);
-
-	/* ¸ù¾İĞ­Òé£¬¶Ôfloat²ÎÊı½øĞĞ×ª»» */
-	p = float_to_uint(motor_tx_info->target_angle, pmin, pmax, 16);
-	v = float_to_uint(motor_tx_info->target_speed, vmin, vmax, 12);
-	kp = float_to_uint(motor_tx_info->Kp, KP_MIN, KP_MAX, 12);
-	kd = float_to_uint(motor_tx_info->Kd, KD_MIN, KD_MAX, 12);
-	t = float_to_uint(motor_tx_info->torque, tmin, tmax, 12);
-
-	/* ¸ù¾İ´«ÊäĞ­Òé£¬°ÑÊı¾İ×ª»»ÎªCANÃüÁîÊı¾İ×Ö¶Î */
-	buf[0] = p >> 8;
-	buf[1] = p & 0xFF;
-	buf[2] = v >> 4;
-	buf[3] = ((v & 0xF) << 4) | (kp >> 8);
-	buf[4] = kp & 0xFF;
-	buf[5] = kd >> 4;
-	buf[6] = ((kd & 0xF) << 4) | (t >> 8);
-	buf[7] = t & 0xff;
-
-	Motor_Send_Data(motor, buf);
-}
-
-/**
- * @brief  ½«float×ªÎªuint£¬²¢¶ÔÕı¸º×ö´¦Àí,ÓëÍ¨ĞÅĞ­Òé±£³ÖÒ»ÖÂ
- * @param
- * @retval
- */
-static uint16_t float_to_uint_(float x, float x_min, float x_max, uint8_t bits)
-{
-	float span = x_max - x_min;
-	float offset = x_min;
-
-	return (uint16_t)((x - offset) * ((float)((1 << bits) - 1)) / span);
-}
-
-/**
- * @brief  ½«uint×ªÎªfloat£¬²¢¶ÔÕı¸º×ö´¦Àí
- * @param
- * @retval
- */
-static float uint_to_float_(uint16_t x_int, float x_min, float x_max, uint8_t bits)
-{
-	float span = x_max - x_min;
-	float offset = x_min;
-	return ((float)x_int) * span / ((float)((1 << bits) - 1)) + offset;
-}
-
-/**
- * @brief          ¼ÆËãµç»úĞı×ª½Ç¶ÈºÍ
- * @param[in]      Motor_DM_t *motor     µç»ú±¾Ìå
- * @retval         none
- */
-static void Angle_Sum_Cal(Motor_DM_t *motor)
-{
-	float err = 0.f;
-
-	float order_correction = 0.f;
-
-	if (motor->born_info->order_correction == 1 || motor->born_info->order_correction == -1)
-	{
-		order_correction = (float)motor->born_info->order_correction;
-	}
-	else
-	{
-		order_correction = 1.f;
-	}
-
-	if (!motor->rx_info->motor_angle_last && !motor->rx_info->motor_angle_sum) // ÉÏÒ»½Ç¶ÈÖµÎª0ÇÒ½Ç¶ÈºÍÎªÁãÊ±£¨µç»úÆô¶¯£©£¬²»¼ÆËãÎó²î
-	{
-		err = 0.f;
-	}
-	else
-	{
-		err = motor->rx_info->motor_angle - motor->rx_info->motor_angle_last;
-	}
-
-	if (my_abs(err) > (float)PI) // ¹ıÁãµã
-	{
-		if (err > 0.f)
-		{
-			motor->rx_info->motor_angle_sum += (-(float)PI * 2.f + err) * order_correction;
-		}
-		else
-		{
-			motor->rx_info->motor_angle_sum += ((float)PI * 2.f + err) * order_correction;
-		}
-	}
-	else
-	{
-		motor->rx_info->motor_angle_sum += err * order_correction;
-	}
-
-	motor->rx_info->motor_angle_last = motor->rx_info->motor_angle;
-}
-
-/**
- * @brief          ÅĞ¶Ïµç»ú´íÎóÂë
- * @param[in]      Motor_DM_t *motor     µç»ú±¾Ìå
- * @retval         none
- */
-static void Motor_ERR_Check(Motor_DM_t *motor, uint8_t err_word)
-{
-	Motor_DM_State_t *my_state = motor->state;
-	//	static Motor_DM_Work_state_e temp_state = Motor_Unenable;
-	switch (err_word)
-	{
-	case 0:
-		my_state->motor_state = Motor_Unenable;
-		break;
-	case 1:
-		my_state->motor_state = Motor_Enable;
-		break;
-	case 8:
-		my_state->motor_state = Over_Voltage;
-		break;
-	case 9:
-		my_state->motor_state = Lack_Voltage;
-		break;
-	case 10:
-		my_state->motor_state = Over_Current;
-		break;
-	case 11:
-		my_state->motor_state = MOS_OverTemp;
-		break;
-	case 12:
-		my_state->motor_state = Motor_OverTemp;
-		break;
-	case 13:
-		my_state->motor_state = Commun_Loss;
-		break;
-	default:
-		my_state->motor_state = Unknow_Err;
-		break;
-	};
-	/*»ñÈ¡ÉÏÒ»´Î²»Í¬ÓÚµ±Ç°µÄµç»ú×´Ì¬*/
-	//	if(temp_state != my_state->motor_state)
-	//	{
-	//		if(temp_state != my_state->last_motor_state)
-	//		{
-	//			my_state->last_motor_state = temp_state;
-	//		}
-	//	}
-	//	temp_state = my_state->motor_state;
-	if (my_state->motor_state != Motor_Enable &&
-		my_state->motor_state != Motor_Unenable)
-	{
-		my_state->last_motor_state = my_state->motor_state;
-	}
-}
-
-/*Ê¾Àı´úÂë*/
-
-/*-------------µç»ú±äÁ¿´´½¨-------------*/
-/*
-Motor_DM_Born_Info_t Yaw_Born_Info =
-{
-	.txId = 0x001,//µç»ú¿ØÖÆ±¨ÎÄID
-
-	.hcan = &hfdcan2,//Ê¹ÓÃµÄCan×ÜÏß
-
-};
-
-Motor_DM_Rx_Info_t Yaw_Rx_Info_t;
-
-Motor_DM_Tx_Info_t Yaw_Tx_Info_t;
-
-Motor_DM_State_t Yaw_State_t;
-
-Motor_DM_t Yaw_Motor =
-{
-	.born_info = &Yaw_Born_Info,
-
-	.rx_info = &Yaw_Rx_Info_t,
-
-	.tx_info = &Yaw_Tx_Info_t,
-
-	.state = &Yaw_State_t,
-
-	.single_init = &DM_Single_Motor_Init,
-};
-*/
-
-/*-------------³õÊ¼»¯-------------*/
-/*
-Yaw_Motor.single_init(&Yaw_Motor);
-*/
-
-/*-------------½ÓÊÕº¯Êı-------------*/
-/*
-void CAN2_rxDataHandler(uint32_t rxId, uint8_t *rxBuf)
-{
-	switch (rxId)
-	{
-		case 0x000://½ÓÊÕID
-		Yaw_Motor.rx(&Yaw_Motor, rxBuf);
-		break;
-		default:
-			break;
-	}
-}
-*/
-
-/*-------------ÈÎÎñÖ´ĞĞ-------------*/
-/*
-  * @file    monitor_task.c
-  * @brief   ¼à¿ØÈÎÎñ
-  *          1. ¸÷Ä£¿éĞÄÌøÊ§Áª¼ì²â
-  *          2. ¼à¿ØÒ£¿ØÆ÷×´Ì¬£¬Èí¼ş¸´Î»
-void StartMonitorTask(void const * argument)//
-{
-
-	for(;;)
-	{
-		Yaw_Motor.heartbeat(&Yaw_Motor);
-
-		osDelay(1);
-	}
-}
-
-  * @file    monitor_task.c
-  * @brief   µç»ú¿ØÖÆÈÎÎñ
-  *          1. ¸øµç»ú·¢ËÍ¿ØÖÆ±¨ÎÄ
-  *          2. ¶Ô×´Ì¬±êÖ¾Î»½øĞĞÏìÓ¦
-void StartMonitorTask(void const * argument)//
-{
-
-	for(;;)
-	{
-		//·¢ËÍ¿ØÖÆ±¨ÎÄ£¬¿ØÖÆµç»úÊä³öÅ¤¾ØÎª0.5N*m
-		Yaw_Motor.tx_info->torque = 0.5f;
-		Yaw_Motor.single_set_torque(&Yaw_Motor);
-
-		osDelay(1);
-	}
-}
-
-*/
+/**
+ * @file        DM_Motor.c
+ * @author      2025_YZJ
+ * @Version     V1.0
+ * @date        8-Febraruary-2025
+ * @brief       è¾¾ç§’mitæ§åˆ¶ç”µæœºåŒ…
+ */
+
+/* Includes ------------------------------------------------------------------*/
+#include "DM_Motor.h"
+
+static uint8_t Motor_Command[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFC};
+
+static void Motor_Send_Data(Motor_DM_t *motor, uint8_t *buf);
+static void Motor_SetControlPara(Motor_DM_t *motor);
+static uint16_t float_to_uint_(float x, float x_min, float x_max, uint8_t bits);
+static float uint_to_float_(uint16_t x_int, float x_min, float x_max, uint8_t bits);
+static void Motor_Send_Command(Motor_DM_t *motor, Motor_MIT_Command_e Command);
+static void Angle_Sum_Cal(Motor_DM_t *motor);
+static void Motor_ERR_Check(Motor_DM_t *motor, uint8_t err_word);
+static void Group_Motor_Heartbeat(Motor_DM_Group_t *group);
+
+/*..........................................å•ç”µæœº..........................................*/
+/**
+ * @brief          å•ç”µæœºå¸åŠ›
+ * @param[in]      Motor_DM_t *motor     ç”µæœºæœ¬ä½“
+ * @retval         none
+ */
+void DM_Single_Motor_Sleep(Motor_DM_t *motor)
+{
+	if (motor != NULL)
+	{
+		motor->tx_info->torque = 0;
+		motor->tx_info->Kd = 0;
+		motor->tx_info->Kp = 0;
+	}
+}
+
+/**
+ * @brief          å•ç”µæœºç½®é›¶ç¼–ç å™¨
+ * @param[in]      Motor_DM_t *motor     ç”µæœºæœ¬ä½“
+ * @retval         none
+ */
+void DM_Single_Motor_ZeroPosSensor(Motor_DM_t *motor)
+{
+	if (motor != NULL)
+	{
+		motor->single_sleep(motor); // å…ˆå¯¹ç”µæœºå¸åŠ›
+
+		Motor_Send_Command(motor, Zero_Position_Sensor);
+	}
+}
+
+/**
+ * @brief          å•ç”µæœºæ§åˆ¶è¾“å‡ºè½¬çŸ©,å«æœ‰CANå‘é€æ“ä½œ
+ * @param[in]      Motor_DM_t *motor     ç”µæœºæœ¬ä½“
+ * @retval         none
+ */
+void DM_Single_Motor_Set_Torque(Motor_DM_t *motor)
+{
+	if (motor != NULL)
+	{
+		if (motor->state->motor_state == Motor_Unenable)
+		{
+			motor->state->motor_state = Motor_Enable;
+			Motor_Send_Command(motor, Enter_Motor_Mode);
+		}
+		else
+		{
+			Motor_DM_Tx_Info_t *motor_tx_info = motor->tx_info;
+			motor_tx_info->Kp = 0;
+			motor_tx_info->Kd = 0;
+			Motor_SetControlPara(motor);
+			motor->tx_info->torque = 0;
+		}
+	}
+}
+
+/**
+ * @brief          å•ç”µæœºæ§åˆ¶é€Ÿåº¦,éœ€è¦è‡ªè¡Œè®¾ç½®kd\target_speed\torque,å«æœ‰CANå‘é€æ“ä½œ
+ * @param[in]      Motor_DM_t *motor     ç”µæœºæœ¬ä½“
+ * @retval         none
+ */
+void DM_Single_Motor_Set_Speed(Motor_DM_t *motor)
+{
+	if (motor != NULL)
+	{
+		if (motor->state->motor_state == Motor_Unenable)
+		{
+			motor->state->motor_state = Motor_Enable;
+			Motor_Send_Command(motor, Enter_Motor_Mode);
+		}
+		else
+		{
+			Motor_DM_Tx_Info_t *motor_tx_info = motor->tx_info;
+			motor_tx_info->Kp = 0;
+			Motor_SetControlPara(motor);
+		}
+	}
+}
+
+/**
+ * @brief          å•ç”µæœºæ§åˆ¶è§’åº¦,éœ€è¦è‡ªè¡Œè®¾ç½®kp\target_angle\kd\target_speed\torque,å«æœ‰CANå‘é€æ“ä½œ
+ * @param[in]      Motor_DM_t *motor     ç”µæœºæœ¬ä½“
+ * @retval         none
+ */
+void DM_Single_Motor_Set_Angle(Motor_DM_t *motor)
+{
+	if (motor != NULL)
+	{
+		if (motor->state->motor_state == Motor_Unenable)
+		{
+			motor->state->motor_state = Motor_Enable;
+			Motor_Send_Command(motor, Enter_Motor_Mode);
+			Motor_Send_Command(motor, Enter_Motor_Mode);
+		}
+		else
+		{
+			motor->tx_info->target_speed = 0;
+			Motor_SetControlPara(motor);
+		}
+	}
+}
+
+void Motor_Set_Angle_Position_DM(Motor_DM_t *motor)
+{
+	pid_ctrl_t *my_angle_ctrl = motor->ctrl->position_out;
+	pid_ctrl_t *my_speed_ctrl = motor->ctrl->position_inn;
+	/*å¤–ç¯è®¡ç®—*/
+	if (motor->ctrl->Angle_Input_Flag == false)
+	{
+		my_angle_ctrl->measure = motor->rx_info->motor_angle_sum;
+	}
+	my_angle_ctrl->err = my_angle_ctrl->target - my_angle_ctrl->measure;
+	//	if(motor->ctrl->Nearest_Return == true)
+	//	{
+	//		if(motor->ctrl->Angle_Input_Flag == false)
+	//		{
+	if (my_angle_ctrl->err < P_MAX_8009)
+	{
+		my_angle_ctrl->err += 2.0f * PI;
+	}
+	if (my_angle_ctrl->err > P_MIN_8009)
+	{
+		my_angle_ctrl->err -= 2.0f * PI;
+	}
+	//		}
+	//		else
+	//		{
+	//			if(my_angle_ctrl->err < -180.f)
+	//			{
+	//				my_angle_ctrl->err += 360.f;
+	//			}
+	//			if(my_angle_ctrl->err > 180.f)
+	//			{
+	//				my_angle_ctrl->err -= 360.f;
+	//			}
+	//		}
+	//	}
+	single_pid_ctrl(my_angle_ctrl);
+
+	my_speed_ctrl->target = my_angle_ctrl->out;
+	if (motor->ctrl->Speed_Input_Flag == false)
+		my_speed_ctrl->measure = motor->rx_info->speed;
+	my_speed_ctrl->err = my_speed_ctrl->target - my_speed_ctrl->measure;
+	single_pid_ctrl(my_speed_ctrl);
+	motor->tx_info->torque = my_speed_ctrl->out;
+}
+
+void Motor_Set_Speed_Position_DM(Motor_DM_t *motor)
+{
+	pid_ctrl_t *my_speed_ctrl = motor->ctrl->speed_ctrl;
+
+	my_speed_ctrl->measure = motor->rx_info->speed;
+	my_speed_ctrl->err = my_speed_ctrl->target - my_speed_ctrl->measure;
+	single_pid_ctrl(my_speed_ctrl);
+	motor->tx_info->torque = my_speed_ctrl->out;
+}
+
+void DM_Single_Motor_Set(Motor_DM_t *motor)
+{
+	if (motor != NULL)
+	{
+		if (motor->state->motor_state == Motor_Unenable)
+		{
+			motor->state->motor_state = Motor_Enable;
+			Motor_Send_Command(motor, Enter_Motor_Mode);
+			Motor_Send_Command(motor, Enter_Motor_Mode);
+		}
+	}
+}
+
+/**
+ * @brief          ç”µæœºCANä¸­æ–­æ¥æ”¶æ•°æ®å¤„ç†
+ * @param[in]      Motor_DM_t *motor      ç”µæœºæœ¬ä½“
+ * @param[in]      uint8_t *rxBuf						CANæ¥æ”¶æ•°æ®åŒ…
+ * @retval         none
+ */
+static void Motor_ReceiveData(Motor_DM_t *motor, uint8_t *rxBuf)
+{
+	static float pmin, pmax, vmax, vmin, tmax, tmin;
+	if (motor->type == dm_6006)
+	{
+		pmax = P_MAX_6006;
+		pmin = P_MIN_6006;
+		vmax = V_MAX_6006;
+		vmin = V_MIN_6006;
+		tmax = T_MAX_6006;
+		tmin = T_MIN_6006;
+	}
+	else if (motor->type == dm_4310)
+	{
+		pmax = P_MAX_4310;
+		pmin = P_MIN_4310;
+		vmax = V_MAX_4310;
+		vmin = V_MIN_4310;
+		tmax = T_MAX_4310;
+		tmin = T_MIN_4310;
+	}
+	else /*(motor->type == leg_8009)*/
+	{
+		pmax = P_MAX_8009;
+		pmin = P_MIN_8009;
+		vmax = V_MAX_8009;
+		vmin = V_MIN_8009;
+		tmax = T_MAX_8009;
+		tmin = T_MIN_8009;
+	}
+
+	Motor_DM_Rx_Info_t *motor_rx_info = motor->rx_info;
+	Motor_ERR_Check(motor, rxBuf[0] >> 4);
+	motor_rx_info->motor_angle = uint_to_float((uint16_t)((rxBuf[1] << 8) | rxBuf[2]), pmin, pmax, 16);
+	motor_rx_info->speed = uint_to_float((uint16_t)((rxBuf[3] << 4) | (rxBuf[4] >> 4)), vmin, vmax, 12);
+	if (my_abs(motor_rx_info->speed) == 0.0109901428f)
+	{
+		motor_rx_info->speed = 0;
+	}
+	motor_rx_info->torque = uint_to_float((uint16_t)(((rxBuf[4] & 0x0F) << 8) | rxBuf[5]), tmin, tmax, 12);
+	Angle_Sum_Cal(motor);
+	motor->state->offline_cnt = 0;
+
+	motor_rx_info->ERR = (rxBuf[0] >> 4) & 0x0F;
+	motor_rx_info->T_MOS = rxBuf[6];
+	motor_rx_info->T_Rotor = rxBuf[7];
+}
+
+/**
+ * @brief          å•ç”µæœºå¿ƒè·³åŒ…
+ * @param[in]      Motor_HT_t *motor    ç”µæœºæœ¬ä½“
+ * @retval         none
+ */
+static void DM_Motor_Hearbeat(Motor_DM_t *motor)
+{
+	motor->state->offline_cnt++;
+
+	if (motor->state->offline_cnt > motor->state->offline_cnt_max)
+	{
+		motor->state->offline_cnt = motor->state->offline_cnt_max;
+		motor->state->status = DEV_OFFLINE;
+		motor->state->motor_state = Motor_Unenable;
+	}
+	else
+	{
+		if (motor->state->status == DEV_OFFLINE)
+			motor->state->status = DEV_ONLINE;
+	}
+}
+
+/**
+ * @brief          å•ç”µæœºåˆå§‹åŒ–
+ * @param[in]      Motor_DM_t *motor     ç”µæœºæœ¬ä½“
+ * @retval         none
+ */
+void DM_Single_Motor_Init(Motor_DM_t *motor)
+{
+	motor->single_sleep = DM_Single_Motor_Sleep;
+	motor->single_set_torque = DM_Single_Motor_Set_Torque;
+	motor->single_set_speed = DM_Single_Motor_Set_Speed;
+	motor->single_set_angle = DM_Single_Motor_Set_Angle;
+	motor->rx = Motor_ReceiveData;
+	motor->single_heart_beat = DM_Motor_Hearbeat;
+	/*å¼€å¯ç”µæœºæ§åˆ¶*/
+	motor->state->motor_state = Motor_Unenable;
+	motor->state->last_motor_state = Motor_Unenable;
+	motor->state->offline_cnt_max = 100;
+	motor->rx_info->motor_angle_sum = 0;
+}
+/*..........................................ç”µæœºç»„..........................................*/
+/**
+ * @brief          å¤šç”µæœºï¼ˆ1~4ä¸ªï¼‰ç”µæœºæ§åˆ¶è¾“å‡ºè½¬çŸ©,å«å‘é€
+ * @param[in]      Motor_DM_Group_t *group     ç”µæœºç»„
+ * @retval         none
+ */
+static void Group_Motor_Set_Torque(Motor_DM_Group_t *group)
+{
+	static uint8_t rx_num = 0;
+
+	if (group->motor[rx_num] != NULL)
+	{
+		group->motor[rx_num]->single_set_torque(group->motor[rx_num]);
+		rx_num++;
+	}
+	if (rx_num >= group->motor_num)
+	{
+		rx_num = 0;
+	}
+}
+
+/**
+ * @brief          ç”µæœºç»„å¸åŠ›
+ * @param[in]      Motor_DM_Group_t *group     ç”µæœºç»„
+ * @retval         none
+ */
+static void Group_Motor_Sleep(Motor_DM_Group_t *group)
+{
+	if (group->motor[0] != NULL)
+	{
+		group->motor[0]->single_sleep(group->motor[0]);
+	}
+	if (group->motor[1] != NULL)
+	{
+		group->motor[1]->single_sleep(group->motor[1]);
+	}
+	if (group->motor[2] != NULL)
+	{
+		group->motor[2]->single_sleep(group->motor[2]);
+	}
+	if (group->motor[3] != NULL)
+	{
+		group->motor[3]->single_sleep(group->motor[3]);
+	}
+}
+
+/**
+ * @brief          ç”µæœºç»„å¿ƒè·³åŒ…
+ * @param[in]      Motor_DM_Group_t *group     ç”µæœºç»„
+ * @retval         none
+ */
+static void Group_Motor_Heartbeat(Motor_DM_Group_t *group)
+{
+	if (group->motor[0] != NULL)
+	{
+		group->motor[0]->single_heart_beat(group->motor[0]);
+	}
+
+	if (group->motor[1] != NULL)
+	{
+		group->motor[1]->single_heart_beat(group->motor[1]);
+	}
+
+	if (group->motor[2] != NULL)
+	{
+		group->motor[2]->single_heart_beat(group->motor[2]);
+	}
+
+	if (group->motor[3] != NULL)
+	{
+		group->motor[3]->single_heart_beat(group->motor[3]);
+	}
+}
+
+/**
+ * @brief          ç”µæœºç»„åˆå§‹åŒ–
+ * @param[in]      Motor_DM_Group_t *group     ç”µæœºç»„
+ * @retval         none
+ */
+void Group_Motor_Init(Motor_DM_Group_t *group)
+{
+	uint8_t num_init = 0;
+	if (group->motor[0] != NULL)
+	{
+		group->motor[0]->single_init = DM_Single_Motor_Init;
+		group->motor[0]->single_init(group->motor[0]);
+		num_init++;
+	}
+
+	if (group->motor[1] != NULL)
+	{
+		group->motor[1]->single_init = DM_Single_Motor_Init;
+		group->motor[1]->single_init(group->motor[1]);
+		num_init++;
+	}
+
+	if (group->motor[2] != NULL)
+	{
+		group->motor[2]->single_init = DM_Single_Motor_Init;
+		group->motor[2]->single_init(group->motor[2]);
+		num_init++;
+	}
+
+	if (group->motor[3] != NULL)
+	{
+		group->motor[3]->single_init = DM_Single_Motor_Init;
+		group->motor[3]->single_init(group->motor[3]);
+		num_init++;
+	}
+
+	group->motor_num = num_init;
+	group->group_set_torque = Group_Motor_Set_Torque;
+	group->group_heartbeat = Group_Motor_Heartbeat;
+	group->group_sleep = Group_Motor_Sleep;
+}
+
+/*..........................................å·¥å…·å‡½æ•°..........................................*/
+/**
+ * @brief          æ•´åˆå¹¶å‘é€ç”µæœºå‘½ä»¤æŠ¥æ–‡
+ * @param          Motor_DM_t *motor
+ * @param[in]      Motor_DM_Command_e Command
+ * @retval         none
+ */
+static void Motor_Send_Command(Motor_DM_t *motor, Motor_MIT_Command_e Command)
+{
+	switch (Command)
+	{
+	case Enter_Motor_Mode:
+		Motor_Command[7] = 0xFC;
+		break;
+	case Exit_Motor_Mode:
+		Motor_Command[7] = 0xFD;
+		break;
+	case Zero_Position_Sensor:
+		Motor_Command[7] = 0xFE;
+		break;
+	default:
+		break;
+	}
+	Motor_Send_Data(motor, Motor_Command);
+}
+
+/**
+ * @brief          æ ¹æ®ç»“æ„ä½“ä¿¡æ¯å‘é€æŠ¥æ–‡
+ * @param          Motor_DM_t *motor
+ * @param          uint8_t* buf è¦å‘é€çš„æŠ¥æ–‡ä¿¡æ¯
+ * @retval         none
+ */
+static void Motor_Send_Data(Motor_DM_t *motor, uint8_t *buf)
+{
+	Motor_DM_Born_Info_t *motor_born_info = motor->born_info;
+
+	CAN_SendData(motor_born_info->hcan, motor_born_info->txId, buf);
+}
+
+/**
+ * @brief          æ ¹æ®å‘é€çš„æŠ¥æ–‡ä¿¡æ¯è®¾ç½®æŠ¥æ–‡å¹¶å‘é€
+ * @param          Motor_DM_t *motor
+ * @retval         none
+ */
+static void Motor_SetControlPara(Motor_DM_t *motor)
+{
+	Motor_DM_Tx_Info_t *motor_tx_info = motor->tx_info;
+	static float pmin, pmax, vmax, vmin, cmax, cmin, tmax, tmin;
+	if (motor->type == dm_6006)
+	{
+		pmax = P_MAX_6006;
+		pmin = P_MIN_6006;
+		vmax = V_MAX_6006;
+		vmin = V_MIN_6006;
+		cmax = C_MAX_6006;
+		cmin = C_MIN_6006;
+		tmax = T_MAX_6006;
+		tmin = T_MIN_6006;
+	}
+	else if (motor->type == dm_4310)
+	{
+		pmax = P_MAX_4310;
+		pmin = P_MIN_4310;
+		vmax = V_MAX_4310;
+		vmin = V_MIN_4310;
+		cmax = C_MAX_4310;
+		cmin = C_MIN_4310;
+		tmax = T_MAX_4310;
+		tmin = T_MIN_4310;
+	}
+	else /*(motor->type == leg_8009)*/
+	{
+		pmax = P_MAX_8009;
+		pmin = P_MIN_8009;
+		vmax = V_MAX_8009;
+		vmin = V_MIN_8009;
+		cmax = C_MAX_8009;
+		cmin = C_MIN_8009;
+		tmax = T_MAX_8009;
+		tmin = T_MIN_8009;
+	}
+
+	uint16_t p, v, kp, kd, t;
+	uint8_t *buf = motor_tx_info->single_tx_buff;
+
+	/* é™åˆ¶è¾“å…¥çš„å‚æ•°åœ¨å®šä¹‰çš„èŒƒå›´å†… */
+	motor_tx_info->target_angle = constrain(motor_tx_info->target_angle, pmin, pmax);
+	motor_tx_info->target_speed = constrain(motor_tx_info->target_speed, vmin, vmax);
+	motor_tx_info->Kp = constrain(motor_tx_info->Kp, KP_MIN, KP_MAX);
+	motor_tx_info->Kd = constrain(motor_tx_info->Kd, KD_MIN, KD_MAX);
+	motor_tx_info->torque = constrain(motor_tx_info->torque, tmin, tmax);
+
+	/* æ ¹æ®åè®®ï¼Œå¯¹floatå‚æ•°è¿›è¡Œè½¬æ¢ */
+	p = float_to_uint(motor_tx_info->target_angle, pmin, pmax, 16);
+	v = float_to_uint(motor_tx_info->target_speed, vmin, vmax, 12);
+	kp = float_to_uint(motor_tx_info->Kp, KP_MIN, KP_MAX, 12);
+	kd = float_to_uint(motor_tx_info->Kd, KD_MIN, KD_MAX, 12);
+	t = float_to_uint(motor_tx_info->torque, tmin, tmax, 12);
+
+	/* æ ¹æ®ä¼ è¾“åè®®ï¼ŒæŠŠæ•°æ®è½¬æ¢ä¸ºCANå‘½ä»¤æ•°æ®å­—æ®µ */
+	buf[0] = p >> 8;
+	buf[1] = p & 0xFF;
+	buf[2] = v >> 4;
+	buf[3] = ((v & 0xF) << 4) | (kp >> 8);
+	buf[4] = kp & 0xFF;
+	buf[5] = kd >> 4;
+	buf[6] = ((kd & 0xF) << 4) | (t >> 8);
+	buf[7] = t & 0xff;
+
+	Motor_Send_Data(motor, buf);
+}
+
+/**
+ * @brief  å°†floatè½¬ä¸ºuintï¼Œå¹¶å¯¹æ­£è´Ÿåšå¤„ç†,ä¸é€šä¿¡åè®®ä¿æŒä¸€è‡´
+ * @param
+ * @retval
+ */
+static uint16_t float_to_uint_(float x, float x_min, float x_max, uint8_t bits)
+{
+	float span = x_max - x_min;
+	float offset = x_min;
+
+	return (uint16_t)((x - offset) * ((float)((1 << bits) - 1)) / span);
+}
+
+/**
+ * @brief  å°†uintè½¬ä¸ºfloatï¼Œå¹¶å¯¹æ­£è´Ÿåšå¤„ç†
+ * @param
+ * @retval
+ */
+static float uint_to_float_(uint16_t x_int, float x_min, float x_max, uint8_t bits)
+{
+	float span = x_max - x_min;
+	float offset = x_min;
+	return ((float)x_int) * span / ((float)((1 << bits) - 1)) + offset;
+}
+
+/**
+ * @brief          è®¡ç®—ç”µæœºæ—‹è½¬è§’åº¦å’Œ
+ * @param[in]      Motor_DM_t *motor     ç”µæœºæœ¬ä½“
+ * @retval         none
+ */
+static void Angle_Sum_Cal(Motor_DM_t *motor)
+{
+	float err = 0.f;
+
+	float order_correction = 0.f;
+
+	if (motor->born_info->order_correction == 1 || motor->born_info->order_correction == -1)
+	{
+		order_correction = (float)motor->born_info->order_correction;
+	}
+	else
+	{
+		order_correction = 1.f;
+	}
+
+	if (!motor->rx_info->motor_angle_last && !motor->rx_info->motor_angle_sum) // ä¸Šä¸€è§’åº¦å€¼ä¸º0ä¸”è§’åº¦å’Œä¸ºé›¶æ—¶ï¼ˆç”µæœºå¯åŠ¨ï¼‰ï¼Œä¸è®¡ç®—è¯¯å·®
+	{
+		err = 0.f;
+	}
+	else
+	{
+		err = motor->rx_info->motor_angle - motor->rx_info->motor_angle_last;
+	}
+
+	if (my_abs(err) > (float)PI) // è¿‡é›¶ç‚¹
+	{
+		if (err > 0.f)
+		{
+			motor->rx_info->motor_angle_sum += (-(float)PI * 2.f + err) * order_correction;
+		}
+		else
+		{
+			motor->rx_info->motor_angle_sum += ((float)PI * 2.f + err) * order_correction;
+		}
+	}
+	else
+	{
+		motor->rx_info->motor_angle_sum += err * order_correction;
+	}
+
+	motor->rx_info->motor_angle_last = motor->rx_info->motor_angle;
+}
+
+/**
+ * @brief          åˆ¤æ–­ç”µæœºé”™è¯¯ç 
+ * @param[in]      Motor_DM_t *motor     ç”µæœºæœ¬ä½“
+ * @retval         none
+ */
+static void Motor_ERR_Check(Motor_DM_t *motor, uint8_t err_word)
+{
+	Motor_DM_State_t *my_state = motor->state;
+	//	static Motor_DM_Work_state_e temp_state = Motor_Unenable;
+	switch (err_word)
+	{
+	case 0:
+		my_state->motor_state = Motor_Unenable;
+		break;
+	case 1:
+		my_state->motor_state = Motor_Enable;
+		break;
+	case 8:
+		my_state->motor_state = Over_Voltage;
+		break;
+	case 9:
+		my_state->motor_state = Lack_Voltage;
+		break;
+	case 10:
+		my_state->motor_state = Over_Current;
+		break;
+	case 11:
+		my_state->motor_state = MOS_OverTemp;
+		break;
+	case 12:
+		my_state->motor_state = Motor_OverTemp;
+		break;
+	case 13:
+		my_state->motor_state = Commun_Loss;
+		break;
+	default:
+		my_state->motor_state = Unknow_Err;
+		break;
+	};
+	/*è·å–ä¸Šä¸€æ¬¡ä¸åŒäºå½“å‰çš„ç”µæœºçŠ¶æ€*/
+	//	if(temp_state != my_state->motor_state)
+	//	{
+	//		if(temp_state != my_state->last_motor_state)
+	//		{
+	//			my_state->last_motor_state = temp_state;
+	//		}
+	//	}
+	//	temp_state = my_state->motor_state;
+	if (my_state->motor_state != Motor_Enable &&
+		my_state->motor_state != Motor_Unenable)
+	{
+		my_state->last_motor_state = my_state->motor_state;
+	}
+}
+
+/*ç¤ºä¾‹ä»£ç */
+
+/*-------------ç”µæœºå˜é‡åˆ›å»º-------------*/
+/*
+Motor_DM_Born_Info_t Yaw_Born_Info =
+{
+	.txId = 0x001,//ç”µæœºæ§åˆ¶æŠ¥æ–‡ID
+
+	.hcan = &hfdcan2,//ä½¿ç”¨çš„Canæ€»çº¿
+
+};
+
+Motor_DM_Rx_Info_t Yaw_Rx_Info_t;
+
+Motor_DM_Tx_Info_t Yaw_Tx_Info_t;
+
+Motor_DM_State_t Yaw_State_t;
+
+Motor_DM_t Yaw_Motor =
+{
+	.born_info = &Yaw_Born_Info,
+
+	.rx_info = &Yaw_Rx_Info_t,
+
+	.tx_info = &Yaw_Tx_Info_t,
+
+	.state = &Yaw_State_t,
+
+	.single_init = &DM_Single_Motor_Init,
+};
+*/
+
+/*-------------åˆå§‹åŒ–-------------*/
+/*
+Yaw_Motor.single_init(&Yaw_Motor);
+*/
+
+/*-------------æ¥æ”¶å‡½æ•°-------------*/
+/*
+void CAN2_rxDataHandler(uint32_t rxId, uint8_t *rxBuf)
+{
+	switch (rxId)
+	{
+		case 0x000://æ¥æ”¶ID
+		Yaw_Motor.rx(&Yaw_Motor, rxBuf);
+		break;
+		default:
+			break;
+	}
+}
+*/
+
+/*-------------ä»»åŠ¡æ‰§è¡Œ-------------*/
+/*
+  * @file    monitor_task.c
+  * @brief   ç›‘æ§ä»»åŠ¡
+  *          1. å„æ¨¡å—å¿ƒè·³å¤±è”æ£€æµ‹
+  *          2. ç›‘æ§é¥æ§å™¨çŠ¶æ€ï¼Œè½¯ä»¶å¤ä½
+void StartMonitorTask(void const * argument)//
+{
+
+	for(;;)
+	{
+		Yaw_Motor.heartbeat(&Yaw_Motor);
+
+		osDelay(1);
+	}
+}
+
+  * @file    monitor_task.c
+  * @brief   ç”µæœºæ§åˆ¶ä»»åŠ¡
+  *          1. ç»™ç”µæœºå‘é€æ§åˆ¶æŠ¥æ–‡
+  *          2. å¯¹çŠ¶æ€æ ‡å¿—ä½è¿›è¡Œå“åº”
+void StartMonitorTask(void const * argument)//
+{
+
+	for(;;)
+	{
+		//å‘é€æ§åˆ¶æŠ¥æ–‡ï¼Œæ§åˆ¶ç”µæœºè¾“å‡ºæ‰­çŸ©ä¸º0.5N*m
+		Yaw_Motor.tx_info->torque = 0.5f;
+		Yaw_Motor.single_set_torque(&Yaw_Motor);
+
+		osDelay(1);
+	}
+}
+
+*/

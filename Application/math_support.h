@@ -1,49 +1,49 @@
-/**
-  ******************************************************************************
-  * @file           : math_support.c\h
-  * @brief          : 
-  * @note           : 2022-3-3 15:29:25
-	*                   Ôö¼Óstr_to_numº¯Êý
-  ******************************************************************************
-  */
-	
-#ifndef __MATH_SUPPORT_H
-#define __MATH_SUPPORT_H
-
-#include "stm32f4xx_hal.h"
-
-#define abs(x) ((x)>0? (x):(-(x)))
-#define sgn(x) (((x)>0)?1:((x)<0?-1:0))
-
-#ifndef PI
-#define PI			3.1415926f
-#endif
-
-float my_sqrt(float num);
-float lowpass(float X_last, float X_new, float K);//µÍÍ¨ÂË²¨
-float ave(int16_t sum, float ave_last, float new_value);  //Çó¾ùÖµ
-
-int16_t str_to_num(uint8_t *str, uint16_t len);  //×Ö·û´®×ªÊýÖµ
-uint8_t num_to_str(int16_t num, uint8_t *str, uint16_t *len);  //×Ö·û´®×ªÊýÖµ
-void num_to_str_2(uint16_t num, uint8_t *str, uint16_t len);
-void num_to_str_3(int16_t num, uint8_t *str, uint16_t len);
-
-/*¸¡µãÊýÏßÐÔÓ³Éä³ÉÕûÊý*/
-int float_to_uint(float x, float x_min, float x_max, int bits);
-
-
-/*ÕûÊýÏßÐÔÓ³Éä³É¸¡µãÊý*/
-float uint_to_float(int x_int, float x_min, float x_max, int bits);
-
-
- 
-/* ÊýÖµº¯Êý */
-#define constrain(x, min, max)	((x>max)?max:(x<min?min:x))
-#define abs(x) 					((x)>0? (x):(-(x)))
-#define one(x)					((x)>0? (1):(-1))
-#define my_square(x)	  ((x)*(x))
-int16_t RampInt(int16_t final, int16_t now, int16_t ramp);
-float RampFloat(float final, float now, float ramp);
-float DeathZoom(float input, float center, float death);
-
-#endif
+/**
+  ******************************************************************************
+  * @file           : math_support.c\h
+  * @brief          : 
+  * @note           : 2022-3-3 15:29:25
+	*                   å¢žåŠ str_to_numå‡½æ•°
+  ******************************************************************************
+  */
+	
+#ifndef __MATH_SUPPORT_H
+#define __MATH_SUPPORT_H
+
+#include "stm32f4xx_hal.h"
+
+#define abs(x) ((x)>0? (x):(-(x)))
+#define sgn(x) (((x)>0)?1:((x)<0?-1:0))
+
+#ifndef PI
+#define PI			3.1415926f
+#endif
+
+float my_sqrt(float num);
+float lowpass(float X_last, float X_new, float K);//ä½Žé€šæ»¤æ³¢
+float ave(int16_t sum, float ave_last, float new_value);  //æ±‚å‡å€¼
+
+int16_t str_to_num(uint8_t *str, uint16_t len);  //å­—ç¬¦ä¸²è½¬æ•°å€¼
+uint8_t num_to_str(int16_t num, uint8_t *str, uint16_t *len);  //å­—ç¬¦ä¸²è½¬æ•°å€¼
+void num_to_str_2(uint16_t num, uint8_t *str, uint16_t len);
+void num_to_str_3(int16_t num, uint8_t *str, uint16_t len);
+
+/*æµ®ç‚¹æ•°çº¿æ€§æ˜ å°„æˆæ•´æ•°*/
+int float_to_uint(float x, float x_min, float x_max, int bits);
+
+
+/*æ•´æ•°çº¿æ€§æ˜ å°„æˆæµ®ç‚¹æ•°*/
+float uint_to_float(int x_int, float x_min, float x_max, int bits);
+
+
+ 
+/* æ•°å€¼å‡½æ•° */
+#define constrain(x, min, max)	((x>max)?max:(x<min?min:x))
+#define abs(x) 					((x)>0? (x):(-(x)))
+#define one(x)					((x)>0? (1):(-1))
+#define my_square(x)	  ((x)*(x))
+int16_t RampInt(int16_t final, int16_t now, int16_t ramp);
+float RampFloat(float final, float now, float ramp);
+float DeathZoom(float input, float center, float death);
+
+#endif

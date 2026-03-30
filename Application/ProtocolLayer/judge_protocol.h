@@ -1,354 +1,354 @@
-#ifndef __JUDGE_PROTOCOL_H
-#define __JUDGE_PROTOCOL_H
-
-#include "rp_config.h"
-#include "main.h"
-#include "stdbool.h"
-#define JUDGE_FRAME_HEADER	0xA5  //´ËÎªÖ¡Í·µÄSOF,Ö¡Í··ÖÎª SOF,length,Seq,CRC8
-//***********²ÃÅĞÏµÍ³µÄ·ÖÀàĞÅÏ¢***************/
-enum
-{ 
-	ID_game_state       						= 0x0001,//±ÈÈü×´Ì¬Êı¾İ£¬1Hz
-	ID_game_result 	   							= 0x0002,//±ÈÈü½á¹ûÊı¾İ£¬±ÈÈü½áÊø·¢ËÍ
-	ID_game_robot_HP       					= 0x0003,//±ÈÈü»úÆ÷ÈËÑªÁ¿Êı¾İ£¬1Hz·¢ËÍ
-//	ID_dart_status									= 0x0004,//·ÉïÚ·¢Éä×´Ì¬£¬·ÉïÚ·¢ÉäÊ±·¢ËÍ
-	ID_ICRA_buff_debuff_zone_status = 0x0005,//ÈË¹¤ÖÇÄÜÌôÕ½Èü¼Ó³ÉÓë³Í·£Çø×´Ì¬£¬1Hz
-	ID_event_data  									= 0x0101,//³¡µØÊÂ¼şÊı¾İ£¬ÊÂ¼ş ¡ª¡ª¸Ä±äºó¡ª¡ª ·¢ËÍ
-	ID_supply_projectile_action   	= 0x0102,//³¡µØ²¹¸øÕ¾¶¯×÷±êÊ¶Êı¾İ£¬¶¯×÷ ¡ª¡ª¸Ä±äºó¡ª¡ª ·¢ËÍ
-//	ID_supply_projectile_booking    = 0x0103,//ÇëÇó²¹¸øÕ¾²¹µ¯Êı¾İ ¡ª¡ª²ÎÈü¶Ó·¢ËÍ¡ª¡ª£¨RM ¶Ô¿¹ÈüÉĞÎ´¿ª£©10Hz
-	ID_referee_warning					 		= 0x0104,//²ÃÅĞ¾¯¸æÊı¾İ£¬¡ª¡ª¾¯¸æºó¡ª¡ª·¢ËÍ
-	ID_dart_remaining_time					= 0x0105,//·ÉïÚ·¢Éä¿Úµ¹¼ÆÊ±£¬1Hz
-	ID_game_robot_state    					= 0x0201,//»úÆ÷ÈË×´Ì¬Êı¾İ£¬10Hz
-	ID_power_heat_data    					= 0x0202,//ÊµÊ±¹¦ÂÊÈÈÁ¿Êı¾İ£¬50Hz
-	ID_game_robot_pos        				= 0x0203,//»úÆ÷ÈËÎ»ÖÃÊı¾İ£¬10Hz
-	ID_buff_musk										= 0x0204,//»úÆ÷ÈËÔöÒæÊı¾İ£¬1Hz
-	ID_aerial_robot_energy					= 0x0205,//¿ÕÖĞ»úÆ÷ÈËÄÜÁ¿×´Ì¬Êı¾İ£¬10Hz£¬Ö»ÓĞ¡ª¡ª¿ÕÖĞ»úÆ÷ÈËÖ÷¿Ø¡ª¡ª·¢ËÍ
-	ID_robot_hurt										= 0x0206,//ÉËº¦×´Ì¬Êı¾İ£¬ÉËº¦·¢Éúºó·¢ËÍ
- 	ID_shoot_data										= 0x0207,//ÊµÊ±Éä»÷Êı¾İ£¬×Óµ¯·¢Éäºó·¢ËÍ
-	ID_bullet_remaining							= 0x0208,//µ¯ÍèÊ£Óà·¢ËÍÊı£¬½ö¡ª¡ª¿ÕÖĞ»úÆ÷ÈË£¬ÉÚ±ø»úÆ÷ÈË¡ª¡ªÒÔ¼°ICRA»úÆ÷ÈË·¢ËÍ£¬1Hz
-	ID_rfid_status									= 0x0209,//»úÆ÷ÈËRFID×´Ì¬£¬1Hz
-	
-	ID_dart_client_directive        = 0x020A,//·ÉïÚ»úÆ÷ÈË¿Í»§¶ËÖ¸ÁîÊé, 10Hz
-	
-	ID_robot_interactive_header_data			= 0x0301,//»úÆ÷ÈË½»»¥Êı¾İ£¬¡ª¡ª·¢ËÍ·½´¥·¢¡ª¡ª·¢ËÍ 10Hz
-	ID_controller_interactive_header_data = 0x0302,//×Ô¶¨Òå¿ØÖÆÆ÷½»»¥Êı¾İ½Ó¿Ú£¬Í¨¹ı¡ª¡ª¿Í»§¶Ë´¥·¢¡ª¡ª·¢ËÍ 30Hz
-	ID_map_interactive_header_data        = 0x0303,//¿Í»§¶ËĞ¡µØÍ¼½»»¥Êı¾İ£¬¡ª¡ª´¥·¢·¢ËÍ¡ª¡ª
-	ID_keyboard_information               = 0x0304,//¼üÅÌ¡¢Êó±êĞÅÏ¢£¬Í¨¹ı¡ª¡ªÍ¼´«´®¿Ú¡ª¡ª·¢ËÍ
-  ID_smallmap                           = 0x0305,//¿Í»§¶ËĞ¡µØÍ¼½ÓÊÕĞÅÏ¢ 
-};
-//ÃüÁîÂëÃ¶¾ÙCMD_ID
-//**************²ÃÅĞÏµÍ³¸÷¸öĞÅÏ¢µÄ³¤¶È£¨µ¥Î»/×Ö½Ú£©**************************/
-enum judge_data_length_t {
-	/* Std */
-	LEN_FRAME_HEAD 	                 = 5,	// Ö¡Í·³¤¶È
-	LEN_CMD_ID 		                   = 2,	// ÃüÁîÂë³¤¶È
-	LEN_FRAME_TAIL 	                 = 2,	// Ö¡Î²CRC16
-	/* Ext */
-	// 0x000x
-	LEN_GAME_STATUS 				         = 11,
-	LEN_GAME_RESULT 				         = 1,
-	LEN_GAME_ROBOT_HP 			         = 32,
-//	LEN_DART_STATUS					         = 3,
-	LEN_ICRA_BUFF_DEBUFF_ZONE_STATUS = 11,//0x0005
-	// 0x010x
-	LEN_EVENT_DATA					         = 4,
-	LEN_SUPPLY_PROJECTILE_ACTION	   = 4,//£¡£¡£¡£¡£¡£¡£¡£¡£¡£¡£¡£¡£¡£¡£¡£¡£¡
-//	LEN_SUPPLY_PROJECTILE_BOOKING	   = 2,//¶Ô¿¹ÈüÎ´¿ªÆô
-	LEN_REFEREE_WARNING				       = 2,
-	LEN_DART_REMAINING_TIME		     	 = 1,//0x0105
-	// 0x020x
-	LEN_GAME_ROBOT_STATUS			       = 27,//15!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	LEN_POWER_HEAT_DATA 			       = 16,//£¡£¡£¡£¡£¡£¡£¡£¡£¡£¡
-	LEN_GAME_ROBOT_POS				       = 16,
-	LEN_BUFF_MASK		 				         = 1,
-	LEN_AERIAL_ROBOT_ENERGY 	     	 = 1,//£¡£¡£¡£¡£¡
-	LEN_ROBOT_HURT				         	 = 1,
-	LEN_SHOOT_DATA					         = 7,//£¡£¡£¡£¡
-	LEN_BULLET_REMAINING	 		       = 6,//£¡£¡£¡£¡
-	LEN_RFID_STATUS					         = 4,
-	LEN_DART_CLIENT_DIRECTIVE        = 6,//0x020A
-
-	// 0x030x
-	//LEN_robot_interactive_header_data      = n,
-	//LEN_controller_interactive_header_data = n,
-	LEN_MAP_INTERACTIVE_HEADERDATA           = 15,
-	LEN_KEYBOARD_INFORMATION                 = 12,//0x0304
-
-		LEN_SENTRY_INFO                          = 1,
-};//±í2-4
-/*******************²ÃÅĞÏµÍ³ĞÅÏ¢ÄÚÈİÅÅĞò**************************/
-
-
-
-typedef struct __attribute__((packed))
-{
-	uint8_t  sof;
-	uint16_t data_length;
-	uint8_t  seq;
-	uint8_t  crc8;
-} std_frame_header_t;//LEN_FRAME_HEAD
-
-/* ID: 0x0001  Byte:  11    ²¹¸øÕ¾¶¯×÷±êÊ¶Êı¾İ */
-typedef struct __attribute__((packed))
-{
- uint8_t game_type : 4;
- uint8_t game_progress : 4;
- uint16_t stage_remain_time;
-uint64_t SyncTimeStamp;
-} ext_game_status_t;
-
-//LEN_CMD_ID
-//LEN_FRAME_TAIL
-/* ID: 0x0005 	Byte:	11	ÈË¹¤ÖÇÄÜÌôÕ½Èü¼Ó³ÉÓë³Í·£Çø×´Ì¬ */
-typedef struct __attribute__((packed)) 
-{
-	uint8_t F1_zone_status:1;            //¼¤»î×´Ì¬
-	uint8_t F1_zone_buff_debuff_status:3;//ºì·½»ØÑªÇø
-	uint8_t F2_zone_status:1;
-	uint8_t F2_zone_buff_debuff_status:3;//ºì·½µ¯Ò©²¹¸øÇø
-	uint8_t F3_zone_status:1;
-	uint8_t F3_zone_buff_debuff_status:3;//À¶·½»ØÑªÇø
-	uint8_t F4_zone_status:1;
-	uint8_t F4_zone_buff_debuff_status:3;//À¶·½µ¯Ò©²¹¸øÇø
-	uint8_t F5_zone_status:1;
-	uint8_t F5_zone_buff_debuff_status:3;//½ûÖ¹Éä»÷Çø
-	uint8_t F6_zone_status:1;
-	uint8_t F6_zone_buff_debuff_status:3;//½ûÖ¹ÒÆ¶¯Çø
-	uint16_t red1_bullet_left;           //ºì·½ 1 ºÅÊ£Óàµ¯Á¿
-	uint16_t red2_bullet_left;           //ºì·½ 2 ºÅÊ£Óàµ¯Á¿
-	uint16_t blue1_bullet_left;          //À¶·½ 1 ºÅÊ£Óàµ¯Á¿
-	uint16_t blue2_bullet_left;          //À¶·½ 2 ºÅÊ£Óàµ¯Á¿
-} ext_ICRA_buff_debuff_zone_status_t;//LEN_ICRA_BUFF_DEBUFF_ZONE_STATUS  ±í3-5
-/* ID: 0x0102  Byte:  4    ²¹¸øÕ¾¶¯×÷±êÊ¶Êı¾İ */
-typedef struct __attribute__((packed))  
-{ 
-	uint8_t supply_projectile_id;  //²¹¸øÕ¾¿Ú ID
-	uint8_t supply_robot_id;       //²¹µ¯»úÆ÷ÈË ID
-	uint8_t supply_projectile_step;//³öµ¯¿Ú¿ª±Õ×´Ì¬
-	uint8_t supply_projectile_num; //²¹µ¯ÊıÁ¿
-} ext_supply_projectile_action_t;//LEN_SUPPLY_PROJECTILE_ACTION  ±í3-7
-/* ID: 0X0201  Byte: 27    »úÆ÷ÈË×´Ì¬Êı¾İ */
-typedef struct  __attribute__((packed))  
-{ 
-	uint8_t robot_id;                       //±¾»úÆ÷ÈË ID
-	uint8_t robot_level;                    //»úÆ÷ÈËµÈ¼¶
-	uint16_t remain_HP;                     //»úÆ÷ÈËÊ£ÓàÑªÁ¿
-	uint16_t max_HP;                        //»úÆ÷ÈËÉÏÏŞÑªÁ¿
-	uint16_t shooter_id1_17mm_cooling_rate; //»úÆ÷ÈË 1 ºÅ 17mm Ç¹¿ÚÃ¿ÃëÀäÈ´Öµ
-	uint16_t shooter_id1_17mm_cooling_limit;//»úÆ÷ÈË 1 ºÅ 17mm Ç¹¿ÚÈÈÁ¿ÉÏÏŞ
-	uint16_t shooter_id1_17mm_speed_limit;  //»úÆ÷ÈË 1 ºÅ 17mm Ç¹¿ÚÉÏÏŞËÙ¶È µ¥Î» m/s
-	uint16_t shooter_id2_17mm_cooling_rate; //»úÆ÷ÈË 2 ºÅ 17mm Ç¹¿ÚÃ¿ÃëÀäÈ´Öµ
-	uint16_t shooter_id2_17mm_cooling_limit;//»úÆ÷ÈË 2 ºÅ 17mm Ç¹¿ÚÈÈÁ¿ÉÏÏŞ
-	uint16_t shooter_id2_17mm_speed_limit;  //»úÆ÷ÈË 2 ºÅ 17mm Ç¹¿ÚÉÏÏŞËÙ¶È µ¥Î» m/s
-	uint16_t shooter_id1_42mm_cooling_rate; //»úÆ÷ÈË 42mm Ç¹¿ÚÃ¿ÃëÀäÈ´Öµ
-	uint16_t shooter_id1_42mm_cooling_limit;//»úÆ÷ÈË 42mm Ç¹¿ÚÈÈÁ¿ÉÏÏŞ
-	uint16_t shooter_id1_42mm_speed_limit;  //»úÆ÷ÈË 42mm Ç¹¿ÚÉÏÏŞËÙ¶È µ¥Î» m/s
-	uint16_t chassis_power_limit;           //»úÆ÷ÈËµ×ÅÌ¹¦ÂÊÏŞÖÆÉÏÏŞ
-	//Ö÷¿ØµçÔ´Êä³öÇé¿ö
-	uint8_t mains_power_gimbal_output  : 1; //gimbal ¿ÚÊä³ö£º 1 ÎªÓĞ 24V Êä³ö£¬0 ÎªÎŞ 24v Êä³ö
-	uint8_t mains_power_chassis_output : 1; //chassis ¿ÚÊä³ö£º1 ÎªÓĞ 24V Êä³ö£¬0 ÎªÎŞ 24v Êä³ö
-	uint8_t mains_power_shooter_output : 1; //shooter ¿ÚÊä³ö£º1 ÎªÓĞ 24V Êä³ö£¬0 ÎªÎŞ 24v Êä³ö
-} ext_game_robot_status_t; //LEN_GAME_ROBOT_STATUS  ±í3-10
-/* ID: 0X0202  Byte: 16    ÊµÊ±¹¦ÂÊÈÈÁ¿Êı¾İ */
-typedef struct __attribute__((packed))  
-{ 
-	uint16_t chassis_volt;   				// µ×ÅÌÊä³öµçÑ¹£¬µ¥Î»£ºmV
-	uint16_t chassis_current;				// µ×ÅÌÊä³öµçÁ÷£¬µ¥Î»£ºmA
-	float chassis_power;   					// µ×ÅÌË²Ê±¹¦ÂÊ£¬µ¥Î»£ºW
-	uint16_t chassis_power_buffer;	// µ×ÅÌ¹¦ÂÊ»º³å£¬µ¥Î»£º60J½¹¶ú»º³åÄÜÁ¿(·ÉÆÂ¸ù¾İ¹æÔòÔö¼ÓÖÁ250J)
-	uint16_t shooter_id1_17mm_cooling_heat; //1 ºÅ 17mm Ç¹¿ÚÈÈÁ¿
-	uint16_t shooter_id2_17mm_cooling_heat; //2 ºÅ 17mm Ç¹¿ÚÈÈÁ¿
-	uint16_t shooter_id1_42mm_cooling_heat;	//42mm Ç¹¿ÚÈÈÁ¿
-} ext_power_heat_data_t; //LEN_POWER_HEAT_DATA   ±í3-11
-/* ID: 0x0205  Byte:  1    ¿ÕÖĞ»úÆ÷ÈËÄÜÁ¿×´Ì¬Êı¾İ */
-typedef struct __attribute__((packed))  
-{ 
-	uint8_t attack_time;//¿É¹¥»÷Ê±¼ä µ¥Î» s¡£30s µİ¼õÖÁ 0
-} ext_aerial_robot_energy_t; //LEN_AERIAL_ROBOT_ENERGY  ±í3-14
-/* ID: 0x0206  Byte:  1    ÉËº¦×´Ì¬Êı¾İ */
-typedef struct __attribute__((packed)) 
-{ 
-	uint8_t armor_id : 4; 	// ×°¼×ÉËº¦Ê±´ú±í×°¼×ID
-	uint8_t hurt_type : 4; 	// 0x0×°¼×ÉËº¦ 0x1Ä£¿éµôÏß 0x2³¬ÉäËÙ 0x3³¬ÈÈÁ¿ 0x4³¬¹¦ÂÊ 0x5×²»÷
-} ext_robot_hurt_t; //LEN_ROBOT_HURT  ±í3-15
-/* ID: 0x0207  Byte:  7    ÊµÊ±Éä»÷Êı¾İ */
-typedef struct __attribute__((packed))
-{ 
-	uint8_t bullet_type; 	// ×Óµ¯ÀàĞÍ(1-17mm, 2-42mm)
-	uint8_t shooter_id;   // ·¢Éä»ú¹¹ ID£¨1£º1 ºÅ 17mm ·¢Éä»ú¹¹£¬2£º2 ºÅ 17mm ·¢Éä»ú¹¹£¬3£º42mm ·¢Éä»ú¹¹£©
-	uint8_t bullet_freq;  // ×Óµ¯ÉäÆµ(Hz)
-	float bullet_speed;		// ×Óµ¯ÉäËÙ(m/s)
-} ext_shoot_data_t; //LEN_SHOOT_DATA  ±í3-16
-/* ID: 0x0208  Byte:  6    ×Óµ¯Ê£Óà·¢ÉäÊıÊı¾İ */
-typedef struct __attribute__((packed))
-{
-	uint16_t bullet_remaining_num_17mm;//17mm ×Óµ¯Ê£Óà·¢ÉäÊıÄ¿
-	uint16_t bullet_remaining_num_42mm;//42mm ×Óµ¯Ê£Óà·¢ÉäÊıÄ¿
-	uint16_t coin_remaining_num;       //Ê£Óà½ğ±ÒÊıÁ¿
-} ext_bullet_remaining_t; //LEN_BULLET_REMAINING   ±í3-17
-/* ID: 0x0209  Byte:  4 	»úÆ÷ÈËRFID×´Ì¬ */
-typedef struct __attribute__((packed))
-{
-	uint32_t rfid_status;
-} ext_rfid_status_t;//LEN_RFID_STATUS  ±í3-18
-/*ID£º0x020A   Byte£º6  ·ÉïÚ»úÆ÷ÈË¿Í»§¶ËÖ¸ÁîÊı¾İ*/
-	/*******************************************************************************/
-/*
-	»úÆ÷ÈË ID£º
-	1£¬Ó¢ĞÛ(ºì)£»
-	2£¬¹¤³Ì(ºì)£»
-	3/4/5£¬²½±ø(ºì)£»
-	6£¬¿ÕÖĞ(ºì)£»
-	7£¬ÉÚ±ø(ºì)£»
-	9£¬À×´ï£¨ºì£©
-	101£¬Ó¢ĞÛ(À¶)£»
-	102£¬¹¤³Ì(À¶)£»
-	103/104/105£¬²½±ø(À¶)£»
-	106£¬¿ÕÖĞ(À¶)£»
-	107£¬ÉÚ±ø(À¶)£»
-	109£¬À×´ï£¨À¶£©
-
-	¿Í»§¶Ë ID£º 
-	0x0101 ÎªÓ¢ĞÛ²Ù×÷ÊÖ¿Í»§¶Ë(ºì) £»
-	0x0102 Îª¹¤³Ì²Ù×÷ÊÖ¿Í»§¶Ë( ºì )£»
-	0x0103/0x0104/0x0105 Îª²½±ø²Ù×÷ÊÖ¿Í»§¶Ë(ºì)£»
-	0x0106 Îª¿ÕÖĞ²Ù×÷ÊÖ¿Í»§¶Ë((ºì)£» 
-
-	0x0165£¬Ó¢ĞÛ²Ù×÷ÊÖ¿Í»§¶Ë(À¶)£»
-	0x0166£¬¹¤³Ì²Ù×÷ÊÖ¿Í»§¶Ë(À¶)£»
-	0x0167/0x0168/0x0169£¬²½±ø²Ù×÷ÊÖ¿Í»§¶Ë(À¶)£»
-	0x016A£¬¿ÕÖĞ²Ù×÷ÊÖ¿Í»§¶Ë(À¶)¡£ 
-*/
-enum judge_robot_ID{
-	hero_red       = 1,
-	engineer_red   = 2,
-	infantry3_red  = 3,
-	infantry4_red  = 4,
-	infantry5_red  = 5,
-	plane_red      = 6,
-	
-	hero_blue      = 101,
-	engineer_blue  = 102,
-	infantry3_blue = 103,
-	infantry4_blue = 104,
-	infantry5_blue = 105,
-	plane_blue     = 106,
-};
-typedef struct{
-	uint16_t teammate_hero;
-	uint16_t teammate_engineer;
-	uint16_t teammate_infantry3;
-	uint16_t teammate_infantry4;
-	uint16_t teammate_infantry5;
-	uint16_t teammate_plane;
-	uint16_t teammate_sentry;
-	
-	uint16_t client_hero;
-	uint16_t client_engineer;
-	uint16_t client_infantry3;
-	uint16_t client_infantry4;
-	uint16_t client_infantry5;
-	uint16_t client_plane;
-} ext_interact_id_t;
-
-typedef struct
-{
-	float x_speed;
-	float y_speed;
-	float z_speed;
-	float pitch_speed;
-	float yaw_speed;
-	float roll_speed;
-	
-	uint8_t key5;
-	uint8_t key4;
-	uint8_t key1;
-	uint8_t key3;
-	uint8_t key2;
-	
-}custom_controler_info_t;
-
-typedef struct {
-	std_frame_header_t							fream_header;				// Ö¡Í·ĞÅÏ¢
-
-	ext_game_status_t								ext_game_status;	//0x001
-	ext_supply_projectile_action_t	supply_projectile_action;		// 0x0102
-	
-	ext_game_robot_status_t					game_robot_status;	// 0x0201
-	ext_power_heat_data_t						power_heat_data;		// 0x0202
-	ext_aerial_robot_energy_t				aerial_robot_energy;// 0x0205
-	ext_robot_hurt_t								robot_hurt;					// 0x0206
-	ext_shoot_data_t								shoot_data;					// 0x0207
-	ext_bullet_remaining_t					bullet_remaining;		// 0x0208	
-	ext_rfid_status_t								rfid_status;				// 0x0209	
-	
-	custom_controler_info_t					custom_info;				//0x0302
-	
-	ext_interact_id_t								ids;								//Óë±¾»ú½»»¥µÄ»úÆ÷ÈËid
-	
-	uint16_t                        self_client;        //±¾»ú¿Í»§¶Ë
-	
-	bool	 		data_valid;	// Êı¾İÓĞĞ§ĞÔ
-
-	dev_work_state_t power_heat_data_state;
-	
-	uint8_t		power_heat_data_offline_cnt;
-	uint8_t		power_heat_data_offline_max_cnt;
-	
-} judge_t;
-
-extern judge_t judge;
-void check_judge_offline(judge_t *judge_sen);
-void judge_update(judge_t *judge_sen,uint8_t *rxBuf);
-void Speed_Statistic(void);
-
-typedef struct
-{
-	float speed_now;
-	uint16_t shoot_num;
-	
-	uint16_t lower_110;
-	uint16_t speed_110;
-	uint16_t speed_111;
-	uint16_t speed_112;
-	uint16_t speed_113;
-	uint16_t speed_114;
-	uint16_t speed_115;
-	uint16_t speed_116;
-	uint16_t speed_117;
-	uint16_t speed_118;
-	uint16_t speed_119;
-	uint16_t speed_120;
-	uint16_t speed_121;
-	uint16_t speed_122;
-	uint16_t speed_123;
-
-	uint16_t speed_150;
-	uint16_t speed_151;
-	uint16_t speed_152;
-	uint16_t speed_153;
-	uint16_t speed_154;
-	uint16_t speed_155;
-	uint16_t speed_156;
-	uint16_t speed_157;
-	uint16_t speed_158;
-	uint16_t speed_159;
-	uint16_t speed_160;
-	uint16_t speed_161;
-	uint16_t speed_162;
-	uint16_t speed_163;
-		uint16_t speed_164;
-		uint16_t speed_165;
-	uint16_t higher_165;
-	uint16_t num;
-	uint16_t last_num;
-	float mean;  //µ¯ËÙÆ½¾ùÖµ
-	float variance;//µ¯ËÙÆ½·½²î
-	int16_t temperature_LF;
-	
-}shoot_data_t;
-
-extern shoot_data_t shoot_statistics;
-
-
-#endif
+#ifndef __JUDGE_PROTOCOL_H
+#define __JUDGE_PROTOCOL_H
+
+#include "rp_config.h"
+#include "main.h"
+#include "stdbool.h"
+#define JUDGE_FRAME_HEADER	0xA5  //æ­¤ä¸ºå¸§å¤´çš„SOF,å¸§å¤´åˆ†ä¸º SOF,length,Seq,CRC8
+//***********è£åˆ¤ç³»ç»Ÿçš„åˆ†ç±»ä¿¡æ¯***************/
+enum
+{ 
+	ID_game_state       						= 0x0001,//æ¯”èµ›çŠ¶æ€æ•°æ®ï¼Œ1Hz
+	ID_game_result 	   							= 0x0002,//æ¯”èµ›ç»“æœæ•°æ®ï¼Œæ¯”èµ›ç»“æŸå‘é€
+	ID_game_robot_HP       					= 0x0003,//æ¯”èµ›æœºå™¨äººè¡€é‡æ•°æ®ï¼Œ1Hzå‘é€
+//	ID_dart_status									= 0x0004,//é£é•–å‘å°„çŠ¶æ€ï¼Œé£é•–å‘å°„æ—¶å‘é€
+	ID_ICRA_buff_debuff_zone_status = 0x0005,//äººå·¥æ™ºèƒ½æŒ‘æˆ˜èµ›åŠ æˆä¸æƒ©ç½šåŒºçŠ¶æ€ï¼Œ1Hz
+	ID_event_data  									= 0x0101,//åœºåœ°äº‹ä»¶æ•°æ®ï¼Œäº‹ä»¶ â€”â€”æ”¹å˜åâ€”â€” å‘é€
+	ID_supply_projectile_action   	= 0x0102,//åœºåœ°è¡¥ç»™ç«™åŠ¨ä½œæ ‡è¯†æ•°æ®ï¼ŒåŠ¨ä½œ â€”â€”æ”¹å˜åâ€”â€” å‘é€
+//	ID_supply_projectile_booking    = 0x0103,//è¯·æ±‚è¡¥ç»™ç«™è¡¥å¼¹æ•°æ® â€”â€”å‚èµ›é˜Ÿå‘é€â€”â€”ï¼ˆRM å¯¹æŠ—èµ›å°šæœªå¼€ï¼‰10Hz
+	ID_referee_warning					 		= 0x0104,//è£åˆ¤è­¦å‘Šæ•°æ®ï¼Œâ€”â€”è­¦å‘Šåâ€”â€”å‘é€
+	ID_dart_remaining_time					= 0x0105,//é£é•–å‘å°„å£å€’è®¡æ—¶ï¼Œ1Hz
+	ID_game_robot_state    					= 0x0201,//æœºå™¨äººçŠ¶æ€æ•°æ®ï¼Œ10Hz
+	ID_power_heat_data    					= 0x0202,//å®æ—¶åŠŸç‡çƒ­é‡æ•°æ®ï¼Œ50Hz
+	ID_game_robot_pos        				= 0x0203,//æœºå™¨äººä½ç½®æ•°æ®ï¼Œ10Hz
+	ID_buff_musk										= 0x0204,//æœºå™¨äººå¢ç›Šæ•°æ®ï¼Œ1Hz
+	ID_aerial_robot_energy					= 0x0205,//ç©ºä¸­æœºå™¨äººèƒ½é‡çŠ¶æ€æ•°æ®ï¼Œ10Hzï¼Œåªæœ‰â€”â€”ç©ºä¸­æœºå™¨äººä¸»æ§â€”â€”å‘é€
+	ID_robot_hurt										= 0x0206,//ä¼¤å®³çŠ¶æ€æ•°æ®ï¼Œä¼¤å®³å‘ç”Ÿåå‘é€
+ 	ID_shoot_data										= 0x0207,//å®æ—¶å°„å‡»æ•°æ®ï¼Œå­å¼¹å‘å°„åå‘é€
+	ID_bullet_remaining							= 0x0208,//å¼¹ä¸¸å‰©ä½™å‘é€æ•°ï¼Œä»…â€”â€”ç©ºä¸­æœºå™¨äººï¼Œå“¨å…µæœºå™¨äººâ€”â€”ä»¥åŠICRAæœºå™¨äººå‘é€ï¼Œ1Hz
+	ID_rfid_status									= 0x0209,//æœºå™¨äººRFIDçŠ¶æ€ï¼Œ1Hz
+	
+	ID_dart_client_directive        = 0x020A,//é£é•–æœºå™¨äººå®¢æˆ·ç«¯æŒ‡ä»¤ä¹¦, 10Hz
+	
+	ID_robot_interactive_header_data			= 0x0301,//æœºå™¨äººäº¤äº’æ•°æ®ï¼Œâ€”â€”å‘é€æ–¹è§¦å‘â€”â€”å‘é€ 10Hz
+	ID_controller_interactive_header_data = 0x0302,//è‡ªå®šä¹‰æ§åˆ¶å™¨äº¤äº’æ•°æ®æ¥å£ï¼Œé€šè¿‡â€”â€”å®¢æˆ·ç«¯è§¦å‘â€”â€”å‘é€ 30Hz
+	ID_map_interactive_header_data        = 0x0303,//å®¢æˆ·ç«¯å°åœ°å›¾äº¤äº’æ•°æ®ï¼Œâ€”â€”è§¦å‘å‘é€â€”â€”
+	ID_keyboard_information               = 0x0304,//é”®ç›˜ã€é¼ æ ‡ä¿¡æ¯ï¼Œé€šè¿‡â€”â€”å›¾ä¼ ä¸²å£â€”â€”å‘é€
+  ID_smallmap                           = 0x0305,//å®¢æˆ·ç«¯å°åœ°å›¾æ¥æ”¶ä¿¡æ¯ 
+};
+//å‘½ä»¤ç æšä¸¾CMD_ID
+//**************è£åˆ¤ç³»ç»Ÿå„ä¸ªä¿¡æ¯çš„é•¿åº¦ï¼ˆå•ä½/å­—èŠ‚ï¼‰**************************/
+enum judge_data_length_t {
+	/* Std */
+	LEN_FRAME_HEAD 	                 = 5,	// å¸§å¤´é•¿åº¦
+	LEN_CMD_ID 		                   = 2,	// å‘½ä»¤ç é•¿åº¦
+	LEN_FRAME_TAIL 	                 = 2,	// å¸§å°¾CRC16
+	/* Ext */
+	// 0x000x
+	LEN_GAME_STATUS 				         = 11,
+	LEN_GAME_RESULT 				         = 1,
+	LEN_GAME_ROBOT_HP 			         = 32,
+//	LEN_DART_STATUS					         = 3,
+	LEN_ICRA_BUFF_DEBUFF_ZONE_STATUS = 11,//0x0005
+	// 0x010x
+	LEN_EVENT_DATA					         = 4,
+	LEN_SUPPLY_PROJECTILE_ACTION	   = 4,//ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼
+//	LEN_SUPPLY_PROJECTILE_BOOKING	   = 2,//å¯¹æŠ—èµ›æœªå¼€å¯
+	LEN_REFEREE_WARNING				       = 2,
+	LEN_DART_REMAINING_TIME		     	 = 1,//0x0105
+	// 0x020x
+	LEN_GAME_ROBOT_STATUS			       = 27,//15!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	LEN_POWER_HEAT_DATA 			       = 16,//ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼ï¼
+	LEN_GAME_ROBOT_POS				       = 16,
+	LEN_BUFF_MASK		 				         = 1,
+	LEN_AERIAL_ROBOT_ENERGY 	     	 = 1,//ï¼ï¼ï¼ï¼ï¼
+	LEN_ROBOT_HURT				         	 = 1,
+	LEN_SHOOT_DATA					         = 7,//ï¼ï¼ï¼ï¼
+	LEN_BULLET_REMAINING	 		       = 6,//ï¼ï¼ï¼ï¼
+	LEN_RFID_STATUS					         = 4,
+	LEN_DART_CLIENT_DIRECTIVE        = 6,//0x020A
+
+	// 0x030x
+	//LEN_robot_interactive_header_data      = n,
+	//LEN_controller_interactive_header_data = n,
+	LEN_MAP_INTERACTIVE_HEADERDATA           = 15,
+	LEN_KEYBOARD_INFORMATION                 = 12,//0x0304
+
+		LEN_SENTRY_INFO                          = 1,
+};//è¡¨2-4
+/*******************è£åˆ¤ç³»ç»Ÿä¿¡æ¯å†…å®¹æ’åº**************************/
+
+
+
+typedef struct __attribute__((packed))
+{
+	uint8_t  sof;
+	uint16_t data_length;
+	uint8_t  seq;
+	uint8_t  crc8;
+} std_frame_header_t;//LEN_FRAME_HEAD
+
+/* ID: 0x0001  Byte:  11    è¡¥ç»™ç«™åŠ¨ä½œæ ‡è¯†æ•°æ® */
+typedef struct __attribute__((packed))
+{
+ uint8_t game_type : 4;
+ uint8_t game_progress : 4;
+ uint16_t stage_remain_time;
+uint64_t SyncTimeStamp;
+} ext_game_status_t;
+
+//LEN_CMD_ID
+//LEN_FRAME_TAIL
+/* ID: 0x0005 	Byte:	11	äººå·¥æ™ºèƒ½æŒ‘æˆ˜èµ›åŠ æˆä¸æƒ©ç½šåŒºçŠ¶æ€ */
+typedef struct __attribute__((packed)) 
+{
+	uint8_t F1_zone_status:1;            //æ¿€æ´»çŠ¶æ€
+	uint8_t F1_zone_buff_debuff_status:3;//çº¢æ–¹å›è¡€åŒº
+	uint8_t F2_zone_status:1;
+	uint8_t F2_zone_buff_debuff_status:3;//çº¢æ–¹å¼¹è¯è¡¥ç»™åŒº
+	uint8_t F3_zone_status:1;
+	uint8_t F3_zone_buff_debuff_status:3;//è“æ–¹å›è¡€åŒº
+	uint8_t F4_zone_status:1;
+	uint8_t F4_zone_buff_debuff_status:3;//è“æ–¹å¼¹è¯è¡¥ç»™åŒº
+	uint8_t F5_zone_status:1;
+	uint8_t F5_zone_buff_debuff_status:3;//ç¦æ­¢å°„å‡»åŒº
+	uint8_t F6_zone_status:1;
+	uint8_t F6_zone_buff_debuff_status:3;//ç¦æ­¢ç§»åŠ¨åŒº
+	uint16_t red1_bullet_left;           //çº¢æ–¹ 1 å·å‰©ä½™å¼¹é‡
+	uint16_t red2_bullet_left;           //çº¢æ–¹ 2 å·å‰©ä½™å¼¹é‡
+	uint16_t blue1_bullet_left;          //è“æ–¹ 1 å·å‰©ä½™å¼¹é‡
+	uint16_t blue2_bullet_left;          //è“æ–¹ 2 å·å‰©ä½™å¼¹é‡
+} ext_ICRA_buff_debuff_zone_status_t;//LEN_ICRA_BUFF_DEBUFF_ZONE_STATUS  è¡¨3-5
+/* ID: 0x0102  Byte:  4    è¡¥ç»™ç«™åŠ¨ä½œæ ‡è¯†æ•°æ® */
+typedef struct __attribute__((packed))  
+{ 
+	uint8_t supply_projectile_id;  //è¡¥ç»™ç«™å£ ID
+	uint8_t supply_robot_id;       //è¡¥å¼¹æœºå™¨äºº ID
+	uint8_t supply_projectile_step;//å‡ºå¼¹å£å¼€é—­çŠ¶æ€
+	uint8_t supply_projectile_num; //è¡¥å¼¹æ•°é‡
+} ext_supply_projectile_action_t;//LEN_SUPPLY_PROJECTILE_ACTION  è¡¨3-7
+/* ID: 0X0201  Byte: 27    æœºå™¨äººçŠ¶æ€æ•°æ® */
+typedef struct  __attribute__((packed))  
+{ 
+	uint8_t robot_id;                       //æœ¬æœºå™¨äºº ID
+	uint8_t robot_level;                    //æœºå™¨äººç­‰çº§
+	uint16_t remain_HP;                     //æœºå™¨äººå‰©ä½™è¡€é‡
+	uint16_t max_HP;                        //æœºå™¨äººä¸Šé™è¡€é‡
+	uint16_t shooter_id1_17mm_cooling_rate; //æœºå™¨äºº 1 å· 17mm æªå£æ¯ç§’å†·å´å€¼
+	uint16_t shooter_id1_17mm_cooling_limit;//æœºå™¨äºº 1 å· 17mm æªå£çƒ­é‡ä¸Šé™
+	uint16_t shooter_id1_17mm_speed_limit;  //æœºå™¨äºº 1 å· 17mm æªå£ä¸Šé™é€Ÿåº¦ å•ä½ m/s
+	uint16_t shooter_id2_17mm_cooling_rate; //æœºå™¨äºº 2 å· 17mm æªå£æ¯ç§’å†·å´å€¼
+	uint16_t shooter_id2_17mm_cooling_limit;//æœºå™¨äºº 2 å· 17mm æªå£çƒ­é‡ä¸Šé™
+	uint16_t shooter_id2_17mm_speed_limit;  //æœºå™¨äºº 2 å· 17mm æªå£ä¸Šé™é€Ÿåº¦ å•ä½ m/s
+	uint16_t shooter_id1_42mm_cooling_rate; //æœºå™¨äºº 42mm æªå£æ¯ç§’å†·å´å€¼
+	uint16_t shooter_id1_42mm_cooling_limit;//æœºå™¨äºº 42mm æªå£çƒ­é‡ä¸Šé™
+	uint16_t shooter_id1_42mm_speed_limit;  //æœºå™¨äºº 42mm æªå£ä¸Šé™é€Ÿåº¦ å•ä½ m/s
+	uint16_t chassis_power_limit;           //æœºå™¨äººåº•ç›˜åŠŸç‡é™åˆ¶ä¸Šé™
+	//ä¸»æ§ç”µæºè¾“å‡ºæƒ…å†µ
+	uint8_t mains_power_gimbal_output  : 1; //gimbal å£è¾“å‡ºï¼š 1 ä¸ºæœ‰ 24V è¾“å‡ºï¼Œ0 ä¸ºæ—  24v è¾“å‡º
+	uint8_t mains_power_chassis_output : 1; //chassis å£è¾“å‡ºï¼š1 ä¸ºæœ‰ 24V è¾“å‡ºï¼Œ0 ä¸ºæ—  24v è¾“å‡º
+	uint8_t mains_power_shooter_output : 1; //shooter å£è¾“å‡ºï¼š1 ä¸ºæœ‰ 24V è¾“å‡ºï¼Œ0 ä¸ºæ—  24v è¾“å‡º
+} ext_game_robot_status_t; //LEN_GAME_ROBOT_STATUS  è¡¨3-10
+/* ID: 0X0202  Byte: 16    å®æ—¶åŠŸç‡çƒ­é‡æ•°æ® */
+typedef struct __attribute__((packed))  
+{ 
+	uint16_t chassis_volt;   				// åº•ç›˜è¾“å‡ºç”µå‹ï¼Œå•ä½ï¼šmV
+	uint16_t chassis_current;				// åº•ç›˜è¾“å‡ºç”µæµï¼Œå•ä½ï¼šmA
+	float chassis_power;   					// åº•ç›˜ç¬æ—¶åŠŸç‡ï¼Œå•ä½ï¼šW
+	uint16_t chassis_power_buffer;	// åº•ç›˜åŠŸç‡ç¼“å†²ï¼Œå•ä½ï¼š60Jç„¦è€³ç¼“å†²èƒ½é‡(é£å¡æ ¹æ®è§„åˆ™å¢åŠ è‡³250J)
+	uint16_t shooter_id1_17mm_cooling_heat; //1 å· 17mm æªå£çƒ­é‡
+	uint16_t shooter_id2_17mm_cooling_heat; //2 å· 17mm æªå£çƒ­é‡
+	uint16_t shooter_id1_42mm_cooling_heat;	//42mm æªå£çƒ­é‡
+} ext_power_heat_data_t; //LEN_POWER_HEAT_DATA   è¡¨3-11
+/* ID: 0x0205  Byte:  1    ç©ºä¸­æœºå™¨äººèƒ½é‡çŠ¶æ€æ•°æ® */
+typedef struct __attribute__((packed))  
+{ 
+	uint8_t attack_time;//å¯æ”»å‡»æ—¶é—´ å•ä½ sã€‚30s é€’å‡è‡³ 0
+} ext_aerial_robot_energy_t; //LEN_AERIAL_ROBOT_ENERGY  è¡¨3-14
+/* ID: 0x0206  Byte:  1    ä¼¤å®³çŠ¶æ€æ•°æ® */
+typedef struct __attribute__((packed)) 
+{ 
+	uint8_t armor_id : 4; 	// è£…ç”²ä¼¤å®³æ—¶ä»£è¡¨è£…ç”²ID
+	uint8_t hurt_type : 4; 	// 0x0è£…ç”²ä¼¤å®³ 0x1æ¨¡å—æ‰çº¿ 0x2è¶…å°„é€Ÿ 0x3è¶…çƒ­é‡ 0x4è¶…åŠŸç‡ 0x5æ’å‡»
+} ext_robot_hurt_t; //LEN_ROBOT_HURT  è¡¨3-15
+/* ID: 0x0207  Byte:  7    å®æ—¶å°„å‡»æ•°æ® */
+typedef struct __attribute__((packed))
+{ 
+	uint8_t bullet_type; 	// å­å¼¹ç±»å‹(1-17mm, 2-42mm)
+	uint8_t shooter_id;   // å‘å°„æœºæ„ IDï¼ˆ1ï¼š1 å· 17mm å‘å°„æœºæ„ï¼Œ2ï¼š2 å· 17mm å‘å°„æœºæ„ï¼Œ3ï¼š42mm å‘å°„æœºæ„ï¼‰
+	uint8_t bullet_freq;  // å­å¼¹å°„é¢‘(Hz)
+	float bullet_speed;		// å­å¼¹å°„é€Ÿ(m/s)
+} ext_shoot_data_t; //LEN_SHOOT_DATA  è¡¨3-16
+/* ID: 0x0208  Byte:  6    å­å¼¹å‰©ä½™å‘å°„æ•°æ•°æ® */
+typedef struct __attribute__((packed))
+{
+	uint16_t bullet_remaining_num_17mm;//17mm å­å¼¹å‰©ä½™å‘å°„æ•°ç›®
+	uint16_t bullet_remaining_num_42mm;//42mm å­å¼¹å‰©ä½™å‘å°„æ•°ç›®
+	uint16_t coin_remaining_num;       //å‰©ä½™é‡‘å¸æ•°é‡
+} ext_bullet_remaining_t; //LEN_BULLET_REMAINING   è¡¨3-17
+/* ID: 0x0209  Byte:  4 	æœºå™¨äººRFIDçŠ¶æ€ */
+typedef struct __attribute__((packed))
+{
+	uint32_t rfid_status;
+} ext_rfid_status_t;//LEN_RFID_STATUS  è¡¨3-18
+/*IDï¼š0x020A   Byteï¼š6  é£é•–æœºå™¨äººå®¢æˆ·ç«¯æŒ‡ä»¤æ•°æ®*/
+	/*******************************************************************************/
+/*
+	æœºå™¨äºº IDï¼š
+	1ï¼Œè‹±é›„(çº¢)ï¼›
+	2ï¼Œå·¥ç¨‹(çº¢)ï¼›
+	3/4/5ï¼Œæ­¥å…µ(çº¢)ï¼›
+	6ï¼Œç©ºä¸­(çº¢)ï¼›
+	7ï¼Œå“¨å…µ(çº¢)ï¼›
+	9ï¼Œé›·è¾¾ï¼ˆçº¢ï¼‰
+	101ï¼Œè‹±é›„(è“)ï¼›
+	102ï¼Œå·¥ç¨‹(è“)ï¼›
+	103/104/105ï¼Œæ­¥å…µ(è“)ï¼›
+	106ï¼Œç©ºä¸­(è“)ï¼›
+	107ï¼Œå“¨å…µ(è“)ï¼›
+	109ï¼Œé›·è¾¾ï¼ˆè“ï¼‰
+
+	å®¢æˆ·ç«¯ IDï¼š 
+	0x0101 ä¸ºè‹±é›„æ“ä½œæ‰‹å®¢æˆ·ç«¯(çº¢) ï¼›
+	0x0102 ä¸ºå·¥ç¨‹æ“ä½œæ‰‹å®¢æˆ·ç«¯( çº¢ )ï¼›
+	0x0103/0x0104/0x0105 ä¸ºæ­¥å…µæ“ä½œæ‰‹å®¢æˆ·ç«¯(çº¢)ï¼›
+	0x0106 ä¸ºç©ºä¸­æ“ä½œæ‰‹å®¢æˆ·ç«¯((çº¢)ï¼› 
+
+	0x0165ï¼Œè‹±é›„æ“ä½œæ‰‹å®¢æˆ·ç«¯(è“)ï¼›
+	0x0166ï¼Œå·¥ç¨‹æ“ä½œæ‰‹å®¢æˆ·ç«¯(è“)ï¼›
+	0x0167/0x0168/0x0169ï¼Œæ­¥å…µæ“ä½œæ‰‹å®¢æˆ·ç«¯(è“)ï¼›
+	0x016Aï¼Œç©ºä¸­æ“ä½œæ‰‹å®¢æˆ·ç«¯(è“)ã€‚ 
+*/
+enum judge_robot_ID{
+	hero_red       = 1,
+	engineer_red   = 2,
+	infantry3_red  = 3,
+	infantry4_red  = 4,
+	infantry5_red  = 5,
+	plane_red      = 6,
+	
+	hero_blue      = 101,
+	engineer_blue  = 102,
+	infantry3_blue = 103,
+	infantry4_blue = 104,
+	infantry5_blue = 105,
+	plane_blue     = 106,
+};
+typedef struct{
+	uint16_t teammate_hero;
+	uint16_t teammate_engineer;
+	uint16_t teammate_infantry3;
+	uint16_t teammate_infantry4;
+	uint16_t teammate_infantry5;
+	uint16_t teammate_plane;
+	uint16_t teammate_sentry;
+	
+	uint16_t client_hero;
+	uint16_t client_engineer;
+	uint16_t client_infantry3;
+	uint16_t client_infantry4;
+	uint16_t client_infantry5;
+	uint16_t client_plane;
+} ext_interact_id_t;
+
+typedef struct
+{
+	float x_speed;
+	float y_speed;
+	float z_speed;
+	float pitch_speed;
+	float yaw_speed;
+	float roll_speed;
+	
+	uint8_t key5;
+	uint8_t key4;
+	uint8_t key1;
+	uint8_t key3;
+	uint8_t key2;
+	
+}custom_controler_info_t;
+
+typedef struct {
+	std_frame_header_t							fream_header;				// å¸§å¤´ä¿¡æ¯
+
+	ext_game_status_t								ext_game_status;	//0x001
+	ext_supply_projectile_action_t	supply_projectile_action;		// 0x0102
+	
+	ext_game_robot_status_t					game_robot_status;	// 0x0201
+	ext_power_heat_data_t						power_heat_data;		// 0x0202
+	ext_aerial_robot_energy_t				aerial_robot_energy;// 0x0205
+	ext_robot_hurt_t								robot_hurt;					// 0x0206
+	ext_shoot_data_t								shoot_data;					// 0x0207
+	ext_bullet_remaining_t					bullet_remaining;		// 0x0208	
+	ext_rfid_status_t								rfid_status;				// 0x0209	
+	
+	custom_controler_info_t					custom_info;				//0x0302
+	
+	ext_interact_id_t								ids;								//ä¸æœ¬æœºäº¤äº’çš„æœºå™¨äººid
+	
+	uint16_t                        self_client;        //æœ¬æœºå®¢æˆ·ç«¯
+	
+	bool	 		data_valid;	// æ•°æ®æœ‰æ•ˆæ€§
+
+	dev_work_state_t power_heat_data_state;
+	
+	uint8_t		power_heat_data_offline_cnt;
+	uint8_t		power_heat_data_offline_max_cnt;
+	
+} judge_t;
+
+extern judge_t judge;
+void check_judge_offline(judge_t *judge_sen);
+void judge_update(judge_t *judge_sen,uint8_t *rxBuf);
+void Speed_Statistic(void);
+
+typedef struct
+{
+	float speed_now;
+	uint16_t shoot_num;
+	
+	uint16_t lower_110;
+	uint16_t speed_110;
+	uint16_t speed_111;
+	uint16_t speed_112;
+	uint16_t speed_113;
+	uint16_t speed_114;
+	uint16_t speed_115;
+	uint16_t speed_116;
+	uint16_t speed_117;
+	uint16_t speed_118;
+	uint16_t speed_119;
+	uint16_t speed_120;
+	uint16_t speed_121;
+	uint16_t speed_122;
+	uint16_t speed_123;
+
+	uint16_t speed_150;
+	uint16_t speed_151;
+	uint16_t speed_152;
+	uint16_t speed_153;
+	uint16_t speed_154;
+	uint16_t speed_155;
+	uint16_t speed_156;
+	uint16_t speed_157;
+	uint16_t speed_158;
+	uint16_t speed_159;
+	uint16_t speed_160;
+	uint16_t speed_161;
+	uint16_t speed_162;
+	uint16_t speed_163;
+		uint16_t speed_164;
+		uint16_t speed_165;
+	uint16_t higher_165;
+	uint16_t num;
+	uint16_t last_num;
+	float mean;  //å¼¹é€Ÿå¹³å‡å€¼
+	float variance;//å¼¹é€Ÿå¹³æ–¹å·®
+	int16_t temperature_LF;
+	
+}shoot_data_t;
+
+extern shoot_data_t shoot_statistics;
+
+
+#endif

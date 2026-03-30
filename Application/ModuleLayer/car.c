@@ -1,709 +1,709 @@
-#include "car.h"
-
-//void Car_TxData_Update(void)
-//{
-//	/*car_data0_tx_info pack update*****************************************************/
-//	car_data0_tx_info_t *car_data0_tx_info = communicate.car_data0_tx_info;
-//	//Ñ¹Ëõchassis_angelÈ¡Öµ·¶Î§
-//	float chassis_angel = (YAW_MOTOR_ANGLE_MIDDLE - gimbal.gimbal_y->KT_motor_info.rx_info.encoder) / 32768.f * 180 / 2;
-//	if (chassis_angel < 0)
-//	{
-//		chassis_angel += 180;
-//	}
-//	car_data0_tx_info->pitch_angel = gimbal.base_info.pitch_imu_angle * 100;
-////	car_data0_tx_info->car_move_mode = car.car_move_mode;
-
-//	if (car.car_ctrl_mode == KEY_CTRL_MODE)//¼üÅÌÄ£Ê½
-//	{
-//		if (rc_sensor.info->V.status== release_to_press)
-//		{
-//			car_data0_tx_info->car_state.bit.is_on_cap = 1;
-//		}
-//		else
-//		{
-//			car_data0_tx_info-> car_state.bit.is_on_cap = 0;
-//		}
-//	}
-//	else//Ò£¿ØÆ÷Ä£Ê½
-//	{
-
-//		
-//		if(my_abs(chassis.base_info.target_front_speed)>=CHASSIS_MAX_SPEED*0.8)
-//		{
-//			car_data0_tx_info->car_state.bit.is_on_cap = 1;
-//		}
-//		else
-//		{
-//			car_data0_tx_info->car_state.bit.is_on_cap = 0;
-//		}
-
-
-//	}
-//	/*car_data1_tx_info pack update******************************/
-//	car_data1_tx_info_t *car_data1_tx_info = communicate.car_data1_tx_info;
-//	car_data1_tx_info->chassis_angel = chassis_angel;
-//	car_data1_tx_info->fric_b_speed = shooting.config->target_B_friction_speed;
-//	car_data1_tx_info->fric_f_speed = shooting.config->target_F_friction_speed;
-//	car_data1_tx_info->pitch_motor_angle = gimbal.base_info.pitch_mec_360_angle;
-//	/*car_data2_tx_info pack update******************************/
-//	car_data2_tx_info_t *car_data2_tx_info = communicate.car_data2_tx_info;
-//	car_data2_tx_info->detect_num = vision.rx_info->detect_num;
-//	car_data2_tx_info->uix_right = vision.rx_info->uix_right / 10;
-//	car_data2_tx_info->uiy_right = vision.rx_info->uiy_right / 5;
-//	car_data2_tx_info->ui_x = vision.rx_info->UI_x;
-//	car_data2_tx_info->ui_y = vision.rx_info->UI_y;
-//	/*car_data3 */
-//	car_data3_tx_info_t *car_data3_tx_info = communicate.car_data3_tx_info;
-//	car_data3_tx_info->uix_lb = vision.rx_info->uix_lb / 10;
-//	car_data3_tx_info->uix_rb = vision.rx_info->uix_rb / 10;
-//	car_data3_tx_info->uiy_lb = vision.rx_info->uiy_lb / 5;
-//	car_data3_tx_info->uiy_rb = vision.rx_info->uiy_rb / 5;
-
-//	car_data3_tx_info->uix_lt = vision.rx_info->uix_lt / 10;
-//	car_data3_tx_info->uix_rt = vision.rx_info->uix_rt / 10;
-//	car_data3_tx_info->uiy_lt = vision.rx_info->uiy_lt / 5;
-//	/*car_data4*/
-//	car_data4_tx_info_t *car_data4_tx_info = communicate.car_data4_tx_info;
-//	car_data4_tx_info->uiy_rt = vision.rx_info->uiy_rt / 5;
-//	car_data4_tx_info->vision_robot_distance = vision.rx_info->distance;
-//	
-
-//	car_data4_tx_info->uix_left = vision.rx_info->uix_left / 10;
-//	car_data4_tx_info->uiy_left = vision.rx_info->uiy_left / 5;
-//}
-
-
-car_t car;
-
-void Car_Ctrl_Mode_Update(car_t *car)
-{
-	//ÓÒ²¦¸ËÉÏ£º¼üÅÌÄ£Ê½  ÆäÓà¶¼ÊÇÒ£¿ØÆ÷Ä£Ê½
-	switch(rc_sensor.info->s1.value)
-	{
-	case 2:	//×ó²¦¸ËÏÂ
-		
-     car->car_ctrl_mode = KEY_CTRL_MODE;
-		break;
-	default://×ó²¦¸Ë²»ÊÇÏÂ
-		car->car_ctrl_mode = RC_CTRL_MODE;
-		break;
-	}
-}
-
-void Key_Move_Mode_Update(car_t *car)
-{
-	
-	switch (car->car_move_mode)
-	{
-	case mec_CAR:
-		//F¼ü°´ÏÂ£¬½øÈëÐ¡ÍÓÂÝÄ£Ê½
-		if(rc_sensor.info->F.status== release_to_press)
-		{
-			car->car_move_mode = cycle_CAR;
-		}
-		//shift°´ÏÂ£¬½øÈëÍÓÂÝÒÇÄ£Ê½
-		if (rc_sensor.info->Shift.status == release_to_press)
-		{
-			car->car_move_mode = gyro_CAR;
-		}
-		//R¼ü°´ÏÂ£¬½øÈë·¢ÉäÄ£Ê½£¬¶à°´ÇÐ»»
-		if(rc_sensor.info->R.status== release_to_press)
-		{
-			if(shoot.shoot_status==off_fire)
-			{
-				shoot.shoot_status=ready_fire;
-			}
-			else
-			{
-				shoot.shoot_status=off_fire;
-			}
-		}
-		//·¢ÉäÄ£Ê½ÏÂ£¬µ¥»÷×óµ¥·¢£¬³¤°´Á¬·¢
-		if(shoot.shoot_status!=off_fire)
-		{
-			if(rc_sensor.info->Z.status== release_to_press)//²¦ÅÌ¸´Î»
-			{
-				shoot.base_info.dail_info.dail_reset_state=DEV_RESET_NO;
-			}
-			if(rc_sensor.info->mouse_btn_l.status== release_to_press)
-			{
-				shoot.record_status=record_short;
-			}
-			if(rc_sensor.info->mouse_btn_l.status== long_press)
-			{
-				shoot.record_status=record_long;
-			}
-			if(rc_sensor.info->mouse_btn_l.status== release || rc_sensor.info->mouse_btn_l.status== press_to_release)
-			{
-				shoot.record_status=record_zero;
-			}
-			if(shoot.base_info.dail_info.dail_reset_state==DEV_RESET_OK)
-			{
-				switch(shoot.record_status)
-				{
-					case record_long:
-						shoot.shoot_status=running_fire;
-					break;
-					case record_short:
-						shoot.shoot_status=single_fire;
-					break;
-					case record_zero:
-						shoot.shoot_status=ready_fire;
-					break;
-					default:
-					break;
-			 	}
-			 }
-		}
-//		}
-		break;
-		break;
-	case gyro_CAR:
-		//C¼ü°´ÏÂ£¬½øÈë»úÐµÄ£Ê½
-		if(rc_sensor.info->C.status== release_to_press)
-		{
-			car->car_move_mode = mec_CAR;
-		}
-		//F¼ü°´ÏÂ£¬½øÈëÐ¡ÍÓÂÝÄ£Ê½
-		if(rc_sensor.info->F.status== release_to_press)
-		{
-			car->car_move_mode = cycle_CAR;
-		}
-		//R¼ü°´ÏÂ£¬½øÈë·¢ÉäÄ£Ê½£¬¶à°´ÇÐ»»
-		if(rc_sensor.info->R.status== release_to_press)
-		{
-			if(shoot.shoot_status==off_fire)
-			{
-				shoot.shoot_status=ready_fire;
-			}
-			else
-			{
-				shoot.shoot_status=off_fire;
-			}
-		}
-		//·¢ÉäÄ£Ê½ÏÂ£¬µ¥»÷×óµ¥·¢£¬³¤°´Á¬·¢
-		if(shoot.shoot_status!=off_fire)
-		{
-			if(rc_sensor.info->Z.status== release_to_press)//²¦ÅÌ¸´Î»
-			{
-				shoot.base_info.dail_info.dail_reset_state=DEV_RESET_NO;
-			}
-			if(rc_sensor.info->mouse_btn_l.status== release_to_press)
-			{
-				shoot.record_status=record_short;
-			}
-			if(rc_sensor.info->mouse_btn_l.status== long_press)
-			{
-				shoot.record_status=record_long;
-			}
-			if(rc_sensor.info->mouse_btn_l.status== release || rc_sensor.info->mouse_btn_l.status== press_to_release)
-			{
-				shoot.record_status=record_zero;
-			}
-			if(shoot.base_info.dail_info.dail_reset_state==DEV_RESET_OK)
-			{
-				switch(shoot.record_status)
-				{
-					case record_long:
-						shoot.shoot_status=running_fire;
-					break;
-					case record_short:
-						shoot.shoot_status=single_fire;
-					break;
-					case record_zero:
-						shoot.shoot_status=ready_fire;
-					break;
-					default:
-					break;
-			 	}
-			 }
-		}
-//		}
-		break;
-	case cycle_CAR:
-		//C¼ü°´ÏÂ£¬½øÈë»úÐµÄ£Ê½
-		if(rc_sensor.info->C.status== release_to_press)
-		{
-			car->car_move_mode = mec_CAR;
-		}
-		//F¼ü°´ÏÂ£¬½øÈëÍÓÂÝÒÇÄ£Ê½
-		if(rc_sensor.info->F.status== release_to_press||rc_sensor.info->Shift.status== release_to_press)
-		{
-			car->car_move_mode = gyro_CAR;
-		}
-		//R¼ü°´ÏÂ£¬½øÈë·¢ÉäÄ£Ê½£¬¶à°´ÇÐ»»
-		if(rc_sensor.info->R.status== release_to_press)
-		{
-			if(shoot.shoot_status==off_fire)
-			{
-				shoot.shoot_status=ready_fire;
-			}
-			else
-			{
-				shoot.shoot_status=off_fire;
-			}
-		}
-		//·¢ÉäÄ£Ê½ÏÂ£¬µ¥»÷×óµ¥·¢£¬³¤°´Á¬·¢
-		if(shoot.shoot_status!=off_fire)
-		{
-			if(rc_sensor.info->Z.status== release_to_press)//²¦ÅÌ¸´Î»
-			{
-				shoot.base_info.dail_info.dail_reset_state=DEV_RESET_NO;
-			}
-			if(rc_sensor.info->mouse_btn_l.status== release_to_press)
-			{
-				shoot.record_status=record_short;
-			}
-			if(rc_sensor.info->mouse_btn_l.status== long_press)
-			{
-				shoot.record_status=record_long;
-			}
-			if(rc_sensor.info->mouse_btn_l.status== release || rc_sensor.info->mouse_btn_l.status== press_to_release)
-			{
-				shoot.record_status=record_zero;
-			}
-			
-			if(shoot.base_info.dail_info.dail_reset_state==DEV_RESET_OK)
-			{
-				switch(shoot.record_status)
-				{
-					case record_long:
-						shoot.shoot_status=running_fire;
-					break;
-					case record_short:
-						shoot.shoot_status=single_fire;
-					break;
-					case record_zero:
-						shoot.shoot_status=ready_fire;
-					break;
-					default:
-					break;
-			 	}
-			 }
-					}
-//		}
-		break;
-	default:
-		break;
-	}
-}
-
-
-void RC_Move_Mode_Update(car_t *car)
-{
-	static uint8_t thumbweheel_step,thumbweheel_last_step;
-	thumbweheel_last_step = thumbweheel_step;
-	thumbweheel_step = rc_sensor.info->thumbwheel.step[RC_TB_UP];
-		
-	static uint8_t thumbwheel_step,thumbwheel_last_step;
-	thumbwheel_last_step = thumbwheel_step;
-	thumbwheel_step = rc_sensor.info->thumbwheel.step[RC_TB_MU];
-	//////////////¼ÓÉÏÅÐ¶Ï²¦¸ËÌø±äÖ®ºóÔÙ½øÈë¼ì²â²¦¸Ë£¬ÒªÊÇÃ»±ä¾ÍÒ»Ö±ÍÓÂÝÒÇÄ£Ê½///////////////
-	if(rc_sensor.info->s2.status != 0)//keep_up
-	{
-		rc_sensor.s2_change_flag=1;
-	}
-	/////////////////½øÈë²¦¸ËÅÐ¶Ï////////////////////////////*/*/
-	if(rc_sensor.s2_change_flag==1)
-	{
-
-		switch(rc_sensor.info->s2.value)
-		{
-		case 0x01:  //ÓÒ²¦¸Ëup
-			if(thumbweheel_step!=thumbweheel_last_step)////////////»úÐµÄ£Ê½¿ØÖÆ
-			{
-				if(car->car_move_mode == mec_CAR)
-				{
-					car->car_move_mode = cycle_CAR;
-				}
-				else if(car->car_move_mode == cycle_CAR)
-				{
-					car->car_move_mode = mec_CAR;
-				}
-			}
-			
-				if(	car->car_move_mode != mec_CAR &&
-				car->car_move_mode != cycle_CAR)
-				{
-					car->car_move_mode = mec_CAR;
-				}
-				
-				if(car->car_move_mode==mec_CAR||
-					car->car_move_mode == cycle_CAR)
-			{
-	//			if(rc_sensor.info->s1.value==rc_sensor.info->s1.value_last)
-	//			{}
-	//			else
-	//			{
-					switch(rc_sensor.info->s1.value)////////////ÅÐ¶ÏÉä»÷Ä£Ê½
-					{
-						case 0x01:
-							shoot.shoot_status=ready_fire;
-						//ÔÚÕâÀï¼Ó²¨ÂÖ¿ØÖÆ³õÊ¼»¯no£¬staticÄÇÀï¼ÓÅÐ¶Ïno£¬ok
-							if(thumbwheel_step!=thumbwheel_last_step)
-								{
-									shoot.base_info.dail_info.dail_reset_state=DEV_RESET_NO;
-								}
-						//
-						break;
-						default:
-							shoot.shoot_status=off_fire;
-						break;
-					}
-					if(shoot.base_info.dail_info.dail_reset_state==DEV_RESET_OK)
-					{
-						static int16_t thumbwheel_step,thumbwheel_last_step;
-			//				thumbweheel_last_step = thumbweheel_step;
-							thumbwheel_step = rc_sensor.info->thumbwheel.value;
-							if(thumbwheel_step>=550)
-							{
-								rc_sensor.info->thumbwheel.wheel_count++;
-								if(rc_sensor.info->thumbwheel.wheel_count>=1000&&rc_sensor.info->thumbwheel.wheel_count<=2000)
-								{
-									
-									shoot.record_status=record_long;
-								
-								}
-								else if(rc_sensor.info->thumbwheel.wheel_count>=50&&rc_sensor.info->thumbwheel.wheel_count<=1000)
-								{
-									shoot.record_status=record_short;
-								}
-								else
-								{
-									shoot.record_status=record_zero;
-								}
-							}
-							else
-							{
-								rc_sensor.info->thumbwheel.wheel_count=0;
-								if(shoot.shoot_status!=off_fire)
-								{
-									switch(shoot.record_status)
-									{
-										case record_long:
-											shoot.shoot_status=running_fire;
-										break;
-										case record_short:
-											shoot.shoot_status=single_fire;
-										break;
-										case record_zero:
-											shoot.shoot_status=ready_fire;
-										break;
-										default:
-										break;
-									}
-								}
-							}
-						}
-				}
-
-			break;
-				case 0x02:  //ÓÒ²¦¸Ëdown
-//			if(thumbweheel_step!=thumbweheel_last_step)////////////»úÐµÄ£Ê½¿ØÖÆ
-//			{
-//				if(car->car_move_mode == lob_CAR)
-//				{
-//					car->car_move_mode = cycle_CAR;
-//				}
-//				else if(car->car_move_mode == cycle_CAR)
-//				{
-//					car->car_move_mode = lob_CAR;
-//				}
-//			}
-			
-				if(	car->car_move_mode != lob_CAR)
-				{
-					car->car_move_mode = lob_CAR;
-				}
-				
-				if(car->car_move_mode==lob_CAR)
-			{
-	//			if(rc_sensor.info->s1.value==rc_sensor.info->s1.value_last)
-	//			{}
-	//			else
-	//			{
-					switch(rc_sensor.info->s1.value)////////////ÅÐ¶ÏÉä»÷Ä£Ê½
-					{
-						case 0x01:
-							shoot.shoot_status=ready_fire;
-						//ÔÚÕâÀï¼Ó²¨ÂÖ¿ØÖÆ³õÊ¼»¯no£¬staticÄÇÀï¼ÓÅÐ¶Ïno£¬ok
-							if(thumbwheel_step!=thumbwheel_last_step)
-								{
-									shoot.base_info.dail_info.dail_reset_state=DEV_RESET_NO;
-								}
-						//
-						break;
-						default:
-							shoot.shoot_status=off_fire;
-						break;
-					}
-					if(shoot.base_info.dail_info.dail_reset_state==DEV_RESET_OK)
-					{
-						static int16_t thumbwheel_step,thumbwheel_last_step;
-			//				thumbweheel_last_step = thumbweheel_step;
-							thumbwheel_step = rc_sensor.info->thumbwheel.value;
-							if(thumbwheel_step>=550)
-							{
-								rc_sensor.info->thumbwheel.wheel_count++;
-								if(rc_sensor.info->thumbwheel.wheel_count>=1000&&rc_sensor.info->thumbwheel.wheel_count<=2000)
-								{
-									
-									shoot.record_status=record_long;
-								
-								}
-								else if(rc_sensor.info->thumbwheel.wheel_count>=50&&rc_sensor.info->thumbwheel.wheel_count<=1000)
-								{
-									shoot.record_status=record_short;
-								}
-								else
-								{
-									shoot.record_status=record_zero;
-								}
-							}
-							else
-							{
-								rc_sensor.info->thumbwheel.wheel_count=0;
-								if(shoot.shoot_status!=off_fire)
-								{
-									switch(shoot.record_status)
-									{
-										case record_long:
-											shoot.shoot_status=running_fire;
-										break;
-										case record_short:
-											shoot.shoot_status=single_fire;
-										break;
-										case record_zero:
-											shoot.shoot_status=ready_fire;
-										break;
-										default:
-										break;
-									}
-								}
-							}
-						}
-				}
-
-			break;
-
-		case 0x03:	//ÓÒ²¦¸Ëmid
-			//²¦ÂÖÏòÉÏÇÐ»»ÍÓÂÝÒÇºÍÐ¡ÍÓÂÝ
-			if(thumbweheel_step!=thumbweheel_last_step)////////////ÍÓÂÝÒÇÄ£Ê½¿ØÖÆ
-			{
-				if(car->car_move_mode == gyro_CAR)
-				{
-					car->car_move_mode = cycle_CAR;
-				}
-				else if(car->car_move_mode == cycle_CAR)
-				{
-					car->car_move_mode = gyro_CAR;
-				}
-			}
-			
-			//²¦¸ËÖÐ¼äÊ±£¬ÇÐ»»µ½ÍÓÂÝÒÇÄ£Ê½  
-			if (car->car_move_mode != gyro_CAR &&
-				car->car_move_mode != cycle_CAR)
-			{
-				car->car_move_mode = gyro_CAR;
-			}
-			
-			if(car->car_move_mode==gyro_CAR ||
-				car->car_move_mode == cycle_CAR)
-			{
-	//			if(rc_sensor.info->s1.value==rc_sensor.info->s1.value_last)
-	//			{}
-	//			else
-	//			{
-					switch(rc_sensor.info->s1.value)
-					{
-						case 0x01:
-							shoot.shoot_status=ready_fire;
-							//ÔÚÕâÀï¼Ó²¨ÂÖ¿ØÖÆ³õÊ¼»¯no£¬staticÄÇÀï¼ÓÅÐ¶Ïno£¬ok
-							if(thumbwheel_step!=thumbwheel_last_step)
-								{
-									shoot.base_info.dail_info.dail_reset_state=DEV_RESET_NO;
-								}
-						//
-						break;
-						default:
-							shoot.shoot_status=off_fire;
-						break;
-					}
-					static int16_t thumbwheel_step,thumbwheel_last_step;
-//				thumbweheel_last_step = thumbweheel_step;
-					thumbwheel_step = rc_sensor.info->thumbwheel.value;
-					if(thumbwheel_step>=550)
-					{
-						rc_sensor.info->thumbwheel.wheel_count++;
-						if(rc_sensor.info->thumbwheel.wheel_count>=1000&&rc_sensor.info->thumbwheel.wheel_count<=2000)
-						{
-							
-								shoot.record_status=record_long;
-						
-						}
-						else if(rc_sensor.info->thumbwheel.wheel_count>=50&&rc_sensor.info->thumbwheel.wheel_count<=1000)
-						{
-							shoot.record_status=record_short;
-						}
-						else
-						{
-							shoot.record_status=record_zero;
-						}
-					}
-					else
-					{
-						rc_sensor.info->thumbwheel.wheel_count=0;
-						if(shoot.shoot_status!=off_fire)
-						{
-							switch(shoot.record_status)
-							{
-								case record_long:
-									shoot.shoot_status=running_fire;
-								break;
-								case record_short:
-									shoot.shoot_status=single_fire;
-								break;
-								case record_zero:
-									shoot.shoot_status=ready_fire;
-								break;
-								default:
-								break;
-							}
-						}
-					}
-	//			}
-			}
-			break;
-		default:
-			break;	
-		}
-	}
-	else/////////////ÉÏµçÄ¬ÈÏÍÓÂÝÒÇ¿ØÖÆ
-	{
-				if(thumbweheel_step!=thumbweheel_last_step)
-			{
-				if(car->car_move_mode == gyro_CAR)
-				{
-					car->car_move_mode = cycle_CAR;
-				}
-				else if(car->car_move_mode == cycle_CAR)
-				{
-					car->car_move_mode = gyro_CAR;
-				}
-			}
-			
-			//²¦¸ËÖÐ¼äÊ±£¬ÇÐ»»µ½ÍÓÂÝÒÇÄ£Ê½  
-			if (car->car_move_mode != gyro_CAR &&
-				car->car_move_mode != cycle_CAR)
-			{
-				car->car_move_mode = gyro_CAR;
-			}
-			
-			if(car->car_move_mode==gyro_CAR ||
-				car->car_move_mode == cycle_CAR)
-			{
-	//			if(rc_sensor.info->s1.value==rc_sensor.info->s1.value_last)
-	//			{}
-	//			else
-	//			{
-					switch(rc_sensor.info->s1.value)
-					{
-						case 0x01:
-							shoot.shoot_status=ready_fire;
-							//ÔÚÕâÀï¼Ó²¨ÂÖ¿ØÖÆ³õÊ¼»¯no£¬staticÄÇÀï¼ÓÅÐ¶Ïno£¬ok
-							if(thumbwheel_step!=thumbwheel_last_step)
-								{
-									shoot.base_info.dail_info.dail_reset_state=DEV_RESET_NO;
-								}
-						//
-
-						break;
-						default:
-							shoot.shoot_status=off_fire;
-						break;
-					}
-					static int16_t thumbwheel_step,thumbwheel_last_step;
-	//				thumbweheel_last_step = thumbweheel_step;
-					thumbwheel_step = rc_sensor.info->thumbwheel.value;
-					if(thumbwheel_step>=550)
-					{
-						rc_sensor.info->thumbwheel.wheel_count++;
-						if(rc_sensor.info->thumbwheel.wheel_count>=1000&&rc_sensor.info->thumbwheel.wheel_count<=2000)
-						{
-							
-								shoot.record_status=record_long;
-						
-						}
-						else if(rc_sensor.info->thumbwheel.wheel_count>=50&&rc_sensor.info->thumbwheel.wheel_count<=1000)
-						{
-							shoot.record_status=record_short;
-						}
-						else
-						{
-							shoot.record_status=record_zero;
-						}
-					}
-					else
-					{
-						rc_sensor.info->thumbwheel.wheel_count=0;
-						if(shoot.shoot_status!=off_fire)
-						{
-							switch(shoot.record_status)
-							{
-								case record_long:
-									shoot.shoot_status=running_fire;
-								break;
-								case record_short:
-									shoot.shoot_status=single_fire;
-								break;
-								case record_zero:
-									shoot.shoot_status=ready_fire;
-								break;
-								default:
-								break;
-							}
-						}
-					}
-	//			}
-			}
-	
-	}
-}
-
-void Car_Move_Mode_Update(car_t *car)
-{
-	if(gimbal.gimbal_reset_state ==DEV_RESET_NO)
-	{
-		car->car_move_mode=init_CAR;
-	}
-	else if (car->car_ctrl_mode == RC_CTRL_MODE)//Ò£¿ØÆ÷Ä£Ê½
-		{
-			RC_Move_Mode_Update(car);//ÓÒ²¦¸Ë¿ØÖÆÒÆ¶¯Ä£Ê½
-		}
-		else{
-			Key_Move_Mode_Update(car);
-		}
-}
-uint16_t t;
-uint32_t last_tick=0;
-void Car_Ctrl(car_t *car) 
-{
-	/*ÍÓÂÝÒÇ³õÊ¼»¯²»¿Ø*/
-	if(bmi.Kp!=0.125)
-	{
-		if(HAL_GetTick()-last_tick>=800)
-			{bmi.Kp=0.125;}
-  }
-//	Car_Ctrl_Mode_Update(car);
-//  Car_Move_Mode_Update(car);
-	/* Õû³µÃüÁî¸üÐÂ */
-//    Command_Update(car);
-}
-
-void Car_Work(void)
-{
-	gimbal.work(&gimbal);
-	shoot.work(&shoot);
-}
-
-
+#include "car.h"
+
+//void Car_TxData_Update(void)
+//{
+//	/*car_data0_tx_info pack update*****************************************************/
+//	car_data0_tx_info_t *car_data0_tx_info = communicate.car_data0_tx_info;
+//	//åŽ‹ç¼©chassis_angelå–å€¼èŒƒå›´
+//	float chassis_angel = (YAW_MOTOR_ANGLE_MIDDLE - gimbal.gimbal_y->KT_motor_info.rx_info.encoder) / 32768.f * 180 / 2;
+//	if (chassis_angel < 0)
+//	{
+//		chassis_angel += 180;
+//	}
+//	car_data0_tx_info->pitch_angel = gimbal.base_info.pitch_imu_angle * 100;
+////	car_data0_tx_info->car_move_mode = car.car_move_mode;
+
+//	if (car.car_ctrl_mode == KEY_CTRL_MODE)//é”®ç›˜æ¨¡å¼
+//	{
+//		if (rc_sensor.info->V.status== release_to_press)
+//		{
+//			car_data0_tx_info->car_state.bit.is_on_cap = 1;
+//		}
+//		else
+//		{
+//			car_data0_tx_info-> car_state.bit.is_on_cap = 0;
+//		}
+//	}
+//	else//é¥æŽ§å™¨æ¨¡å¼
+//	{
+
+//		
+//		if(my_abs(chassis.base_info.target_front_speed)>=CHASSIS_MAX_SPEED*0.8)
+//		{
+//			car_data0_tx_info->car_state.bit.is_on_cap = 1;
+//		}
+//		else
+//		{
+//			car_data0_tx_info->car_state.bit.is_on_cap = 0;
+//		}
+
+
+//	}
+//	/*car_data1_tx_info pack update******************************/
+//	car_data1_tx_info_t *car_data1_tx_info = communicate.car_data1_tx_info;
+//	car_data1_tx_info->chassis_angel = chassis_angel;
+//	car_data1_tx_info->fric_b_speed = shooting.config->target_B_friction_speed;
+//	car_data1_tx_info->fric_f_speed = shooting.config->target_F_friction_speed;
+//	car_data1_tx_info->pitch_motor_angle = gimbal.base_info.pitch_mec_360_angle;
+//	/*car_data2_tx_info pack update******************************/
+//	car_data2_tx_info_t *car_data2_tx_info = communicate.car_data2_tx_info;
+//	car_data2_tx_info->detect_num = vision.rx_info->detect_num;
+//	car_data2_tx_info->uix_right = vision.rx_info->uix_right / 10;
+//	car_data2_tx_info->uiy_right = vision.rx_info->uiy_right / 5;
+//	car_data2_tx_info->ui_x = vision.rx_info->UI_x;
+//	car_data2_tx_info->ui_y = vision.rx_info->UI_y;
+//	/*car_data3 */
+//	car_data3_tx_info_t *car_data3_tx_info = communicate.car_data3_tx_info;
+//	car_data3_tx_info->uix_lb = vision.rx_info->uix_lb / 10;
+//	car_data3_tx_info->uix_rb = vision.rx_info->uix_rb / 10;
+//	car_data3_tx_info->uiy_lb = vision.rx_info->uiy_lb / 5;
+//	car_data3_tx_info->uiy_rb = vision.rx_info->uiy_rb / 5;
+
+//	car_data3_tx_info->uix_lt = vision.rx_info->uix_lt / 10;
+//	car_data3_tx_info->uix_rt = vision.rx_info->uix_rt / 10;
+//	car_data3_tx_info->uiy_lt = vision.rx_info->uiy_lt / 5;
+//	/*car_data4*/
+//	car_data4_tx_info_t *car_data4_tx_info = communicate.car_data4_tx_info;
+//	car_data4_tx_info->uiy_rt = vision.rx_info->uiy_rt / 5;
+//	car_data4_tx_info->vision_robot_distance = vision.rx_info->distance;
+//	
+
+//	car_data4_tx_info->uix_left = vision.rx_info->uix_left / 10;
+//	car_data4_tx_info->uiy_left = vision.rx_info->uiy_left / 5;
+//}
+
+
+car_t car;
+
+void Car_Ctrl_Mode_Update(car_t *car)
+{
+	//å³æ‹¨æ†ä¸Šï¼šé”®ç›˜æ¨¡å¼  å…¶ä½™éƒ½æ˜¯é¥æŽ§å™¨æ¨¡å¼
+	switch(rc_sensor.info->s1.value)
+	{
+	case 2:	//å·¦æ‹¨æ†ä¸‹
+		
+     car->car_ctrl_mode = KEY_CTRL_MODE;
+		break;
+	default://å·¦æ‹¨æ†ä¸æ˜¯ä¸‹
+		car->car_ctrl_mode = RC_CTRL_MODE;
+		break;
+	}
+}
+
+void Key_Move_Mode_Update(car_t *car)
+{
+	
+	switch (car->car_move_mode)
+	{
+	case mec_CAR:
+		//Fé”®æŒ‰ä¸‹ï¼Œè¿›å…¥å°é™€èžºæ¨¡å¼
+		if(rc_sensor.info->F.status== release_to_press)
+		{
+			car->car_move_mode = cycle_CAR;
+		}
+		//shiftæŒ‰ä¸‹ï¼Œè¿›å…¥é™€èžºä»ªæ¨¡å¼
+		if (rc_sensor.info->Shift.status == release_to_press)
+		{
+			car->car_move_mode = gyro_CAR;
+		}
+		//Ré”®æŒ‰ä¸‹ï¼Œè¿›å…¥å‘å°„æ¨¡å¼ï¼Œå¤šæŒ‰åˆ‡æ¢
+		if(rc_sensor.info->R.status== release_to_press)
+		{
+			if(shoot.shoot_status==off_fire)
+			{
+				shoot.shoot_status=ready_fire;
+			}
+			else
+			{
+				shoot.shoot_status=off_fire;
+			}
+		}
+		//å‘å°„æ¨¡å¼ä¸‹ï¼Œå•å‡»å·¦å•å‘ï¼Œé•¿æŒ‰è¿žå‘
+		if(shoot.shoot_status!=off_fire)
+		{
+			if(rc_sensor.info->Z.status== release_to_press)//æ‹¨ç›˜å¤ä½
+			{
+				shoot.base_info.dail_info.dail_reset_state=DEV_RESET_NO;
+			}
+			if(rc_sensor.info->mouse_btn_l.status== release_to_press)
+			{
+				shoot.record_status=record_short;
+			}
+			if(rc_sensor.info->mouse_btn_l.status== long_press)
+			{
+				shoot.record_status=record_long;
+			}
+			if(rc_sensor.info->mouse_btn_l.status== release || rc_sensor.info->mouse_btn_l.status== press_to_release)
+			{
+				shoot.record_status=record_zero;
+			}
+			if(shoot.base_info.dail_info.dail_reset_state==DEV_RESET_OK)
+			{
+				switch(shoot.record_status)
+				{
+					case record_long:
+						shoot.shoot_status=running_fire;
+					break;
+					case record_short:
+						shoot.shoot_status=single_fire;
+					break;
+					case record_zero:
+						shoot.shoot_status=ready_fire;
+					break;
+					default:
+					break;
+			 	}
+			 }
+		}
+//		}
+		break;
+		break;
+	case gyro_CAR:
+		//Cé”®æŒ‰ä¸‹ï¼Œè¿›å…¥æœºæ¢°æ¨¡å¼
+		if(rc_sensor.info->C.status== release_to_press)
+		{
+			car->car_move_mode = mec_CAR;
+		}
+		//Fé”®æŒ‰ä¸‹ï¼Œè¿›å…¥å°é™€èžºæ¨¡å¼
+		if(rc_sensor.info->F.status== release_to_press)
+		{
+			car->car_move_mode = cycle_CAR;
+		}
+		//Ré”®æŒ‰ä¸‹ï¼Œè¿›å…¥å‘å°„æ¨¡å¼ï¼Œå¤šæŒ‰åˆ‡æ¢
+		if(rc_sensor.info->R.status== release_to_press)
+		{
+			if(shoot.shoot_status==off_fire)
+			{
+				shoot.shoot_status=ready_fire;
+			}
+			else
+			{
+				shoot.shoot_status=off_fire;
+			}
+		}
+		//å‘å°„æ¨¡å¼ä¸‹ï¼Œå•å‡»å·¦å•å‘ï¼Œé•¿æŒ‰è¿žå‘
+		if(shoot.shoot_status!=off_fire)
+		{
+			if(rc_sensor.info->Z.status== release_to_press)//æ‹¨ç›˜å¤ä½
+			{
+				shoot.base_info.dail_info.dail_reset_state=DEV_RESET_NO;
+			}
+			if(rc_sensor.info->mouse_btn_l.status== release_to_press)
+			{
+				shoot.record_status=record_short;
+			}
+			if(rc_sensor.info->mouse_btn_l.status== long_press)
+			{
+				shoot.record_status=record_long;
+			}
+			if(rc_sensor.info->mouse_btn_l.status== release || rc_sensor.info->mouse_btn_l.status== press_to_release)
+			{
+				shoot.record_status=record_zero;
+			}
+			if(shoot.base_info.dail_info.dail_reset_state==DEV_RESET_OK)
+			{
+				switch(shoot.record_status)
+				{
+					case record_long:
+						shoot.shoot_status=running_fire;
+					break;
+					case record_short:
+						shoot.shoot_status=single_fire;
+					break;
+					case record_zero:
+						shoot.shoot_status=ready_fire;
+					break;
+					default:
+					break;
+			 	}
+			 }
+		}
+//		}
+		break;
+	case cycle_CAR:
+		//Cé”®æŒ‰ä¸‹ï¼Œè¿›å…¥æœºæ¢°æ¨¡å¼
+		if(rc_sensor.info->C.status== release_to_press)
+		{
+			car->car_move_mode = mec_CAR;
+		}
+		//Fé”®æŒ‰ä¸‹ï¼Œè¿›å…¥é™€èžºä»ªæ¨¡å¼
+		if(rc_sensor.info->F.status== release_to_press||rc_sensor.info->Shift.status== release_to_press)
+		{
+			car->car_move_mode = gyro_CAR;
+		}
+		//Ré”®æŒ‰ä¸‹ï¼Œè¿›å…¥å‘å°„æ¨¡å¼ï¼Œå¤šæŒ‰åˆ‡æ¢
+		if(rc_sensor.info->R.status== release_to_press)
+		{
+			if(shoot.shoot_status==off_fire)
+			{
+				shoot.shoot_status=ready_fire;
+			}
+			else
+			{
+				shoot.shoot_status=off_fire;
+			}
+		}
+		//å‘å°„æ¨¡å¼ä¸‹ï¼Œå•å‡»å·¦å•å‘ï¼Œé•¿æŒ‰è¿žå‘
+		if(shoot.shoot_status!=off_fire)
+		{
+			if(rc_sensor.info->Z.status== release_to_press)//æ‹¨ç›˜å¤ä½
+			{
+				shoot.base_info.dail_info.dail_reset_state=DEV_RESET_NO;
+			}
+			if(rc_sensor.info->mouse_btn_l.status== release_to_press)
+			{
+				shoot.record_status=record_short;
+			}
+			if(rc_sensor.info->mouse_btn_l.status== long_press)
+			{
+				shoot.record_status=record_long;
+			}
+			if(rc_sensor.info->mouse_btn_l.status== release || rc_sensor.info->mouse_btn_l.status== press_to_release)
+			{
+				shoot.record_status=record_zero;
+			}
+			
+			if(shoot.base_info.dail_info.dail_reset_state==DEV_RESET_OK)
+			{
+				switch(shoot.record_status)
+				{
+					case record_long:
+						shoot.shoot_status=running_fire;
+					break;
+					case record_short:
+						shoot.shoot_status=single_fire;
+					break;
+					case record_zero:
+						shoot.shoot_status=ready_fire;
+					break;
+					default:
+					break;
+			 	}
+			 }
+					}
+//		}
+		break;
+	default:
+		break;
+	}
+}
+
+
+void RC_Move_Mode_Update(car_t *car)
+{
+	static uint8_t thumbweheel_step,thumbweheel_last_step;
+	thumbweheel_last_step = thumbweheel_step;
+	thumbweheel_step = rc_sensor.info->thumbwheel.step[RC_TB_UP];
+		
+	static uint8_t thumbwheel_step,thumbwheel_last_step;
+	thumbwheel_last_step = thumbwheel_step;
+	thumbwheel_step = rc_sensor.info->thumbwheel.step[RC_TB_MU];
+	//////////////åŠ ä¸Šåˆ¤æ–­æ‹¨æ†è·³å˜ä¹‹åŽå†è¿›å…¥æ£€æµ‹æ‹¨æ†ï¼Œè¦æ˜¯æ²¡å˜å°±ä¸€ç›´é™€èžºä»ªæ¨¡å¼///////////////
+	if(rc_sensor.info->s2.status != 0)//keep_up
+	{
+		rc_sensor.s2_change_flag=1;
+	}
+	/////////////////è¿›å…¥æ‹¨æ†åˆ¤æ–­////////////////////////////*/*/
+	if(rc_sensor.s2_change_flag==1)
+	{
+
+		switch(rc_sensor.info->s2.value)
+		{
+		case 0x01:  //å³æ‹¨æ†up
+			if(thumbweheel_step!=thumbweheel_last_step)////////////æœºæ¢°æ¨¡å¼æŽ§åˆ¶
+			{
+				if(car->car_move_mode == mec_CAR)
+				{
+					car->car_move_mode = cycle_CAR;
+				}
+				else if(car->car_move_mode == cycle_CAR)
+				{
+					car->car_move_mode = mec_CAR;
+				}
+			}
+			
+				if(	car->car_move_mode != mec_CAR &&
+				car->car_move_mode != cycle_CAR)
+				{
+					car->car_move_mode = mec_CAR;
+				}
+				
+				if(car->car_move_mode==mec_CAR||
+					car->car_move_mode == cycle_CAR)
+			{
+	//			if(rc_sensor.info->s1.value==rc_sensor.info->s1.value_last)
+	//			{}
+	//			else
+	//			{
+					switch(rc_sensor.info->s1.value)////////////åˆ¤æ–­å°„å‡»æ¨¡å¼
+					{
+						case 0x01:
+							shoot.shoot_status=ready_fire;
+						//åœ¨è¿™é‡ŒåŠ æ³¢è½®æŽ§åˆ¶åˆå§‹åŒ–noï¼Œstaticé‚£é‡ŒåŠ åˆ¤æ–­noï¼Œok
+							if(thumbwheel_step!=thumbwheel_last_step)
+								{
+									shoot.base_info.dail_info.dail_reset_state=DEV_RESET_NO;
+								}
+						//
+						break;
+						default:
+							shoot.shoot_status=off_fire;
+						break;
+					}
+					if(shoot.base_info.dail_info.dail_reset_state==DEV_RESET_OK)
+					{
+						static int16_t thumbwheel_step,thumbwheel_last_step;
+			//				thumbweheel_last_step = thumbweheel_step;
+							thumbwheel_step = rc_sensor.info->thumbwheel.value;
+							if(thumbwheel_step>=550)
+							{
+								rc_sensor.info->thumbwheel.wheel_count++;
+								if(rc_sensor.info->thumbwheel.wheel_count>=1000&&rc_sensor.info->thumbwheel.wheel_count<=2000)
+								{
+									
+									shoot.record_status=record_long;
+								
+								}
+								else if(rc_sensor.info->thumbwheel.wheel_count>=50&&rc_sensor.info->thumbwheel.wheel_count<=1000)
+								{
+									shoot.record_status=record_short;
+								}
+								else
+								{
+									shoot.record_status=record_zero;
+								}
+							}
+							else
+							{
+								rc_sensor.info->thumbwheel.wheel_count=0;
+								if(shoot.shoot_status!=off_fire)
+								{
+									switch(shoot.record_status)
+									{
+										case record_long:
+											shoot.shoot_status=running_fire;
+										break;
+										case record_short:
+											shoot.shoot_status=single_fire;
+										break;
+										case record_zero:
+											shoot.shoot_status=ready_fire;
+										break;
+										default:
+										break;
+									}
+								}
+							}
+						}
+				}
+
+			break;
+				case 0x02:  //å³æ‹¨æ†down
+//			if(thumbweheel_step!=thumbweheel_last_step)////////////æœºæ¢°æ¨¡å¼æŽ§åˆ¶
+//			{
+//				if(car->car_move_mode == lob_CAR)
+//				{
+//					car->car_move_mode = cycle_CAR;
+//				}
+//				else if(car->car_move_mode == cycle_CAR)
+//				{
+//					car->car_move_mode = lob_CAR;
+//				}
+//			}
+			
+				if(	car->car_move_mode != lob_CAR)
+				{
+					car->car_move_mode = lob_CAR;
+				}
+				
+				if(car->car_move_mode==lob_CAR)
+			{
+	//			if(rc_sensor.info->s1.value==rc_sensor.info->s1.value_last)
+	//			{}
+	//			else
+	//			{
+					switch(rc_sensor.info->s1.value)////////////åˆ¤æ–­å°„å‡»æ¨¡å¼
+					{
+						case 0x01:
+							shoot.shoot_status=ready_fire;
+						//åœ¨è¿™é‡ŒåŠ æ³¢è½®æŽ§åˆ¶åˆå§‹åŒ–noï¼Œstaticé‚£é‡ŒåŠ åˆ¤æ–­noï¼Œok
+							if(thumbwheel_step!=thumbwheel_last_step)
+								{
+									shoot.base_info.dail_info.dail_reset_state=DEV_RESET_NO;
+								}
+						//
+						break;
+						default:
+							shoot.shoot_status=off_fire;
+						break;
+					}
+					if(shoot.base_info.dail_info.dail_reset_state==DEV_RESET_OK)
+					{
+						static int16_t thumbwheel_step,thumbwheel_last_step;
+			//				thumbweheel_last_step = thumbweheel_step;
+							thumbwheel_step = rc_sensor.info->thumbwheel.value;
+							if(thumbwheel_step>=550)
+							{
+								rc_sensor.info->thumbwheel.wheel_count++;
+								if(rc_sensor.info->thumbwheel.wheel_count>=1000&&rc_sensor.info->thumbwheel.wheel_count<=2000)
+								{
+									
+									shoot.record_status=record_long;
+								
+								}
+								else if(rc_sensor.info->thumbwheel.wheel_count>=50&&rc_sensor.info->thumbwheel.wheel_count<=1000)
+								{
+									shoot.record_status=record_short;
+								}
+								else
+								{
+									shoot.record_status=record_zero;
+								}
+							}
+							else
+							{
+								rc_sensor.info->thumbwheel.wheel_count=0;
+								if(shoot.shoot_status!=off_fire)
+								{
+									switch(shoot.record_status)
+									{
+										case record_long:
+											shoot.shoot_status=running_fire;
+										break;
+										case record_short:
+											shoot.shoot_status=single_fire;
+										break;
+										case record_zero:
+											shoot.shoot_status=ready_fire;
+										break;
+										default:
+										break;
+									}
+								}
+							}
+						}
+				}
+
+			break;
+
+		case 0x03:	//å³æ‹¨æ†mid
+			//æ‹¨è½®å‘ä¸Šåˆ‡æ¢é™€èžºä»ªå’Œå°é™€èžº
+			if(thumbweheel_step!=thumbweheel_last_step)////////////é™€èžºä»ªæ¨¡å¼æŽ§åˆ¶
+			{
+				if(car->car_move_mode == gyro_CAR)
+				{
+					car->car_move_mode = cycle_CAR;
+				}
+				else if(car->car_move_mode == cycle_CAR)
+				{
+					car->car_move_mode = gyro_CAR;
+				}
+			}
+			
+			//æ‹¨æ†ä¸­é—´æ—¶ï¼Œåˆ‡æ¢åˆ°é™€èžºä»ªæ¨¡å¼  
+			if (car->car_move_mode != gyro_CAR &&
+				car->car_move_mode != cycle_CAR)
+			{
+				car->car_move_mode = gyro_CAR;
+			}
+			
+			if(car->car_move_mode==gyro_CAR ||
+				car->car_move_mode == cycle_CAR)
+			{
+	//			if(rc_sensor.info->s1.value==rc_sensor.info->s1.value_last)
+	//			{}
+	//			else
+	//			{
+					switch(rc_sensor.info->s1.value)
+					{
+						case 0x01:
+							shoot.shoot_status=ready_fire;
+							//åœ¨è¿™é‡ŒåŠ æ³¢è½®æŽ§åˆ¶åˆå§‹åŒ–noï¼Œstaticé‚£é‡ŒåŠ åˆ¤æ–­noï¼Œok
+							if(thumbwheel_step!=thumbwheel_last_step)
+								{
+									shoot.base_info.dail_info.dail_reset_state=DEV_RESET_NO;
+								}
+						//
+						break;
+						default:
+							shoot.shoot_status=off_fire;
+						break;
+					}
+					static int16_t thumbwheel_step,thumbwheel_last_step;
+//				thumbweheel_last_step = thumbweheel_step;
+					thumbwheel_step = rc_sensor.info->thumbwheel.value;
+					if(thumbwheel_step>=550)
+					{
+						rc_sensor.info->thumbwheel.wheel_count++;
+						if(rc_sensor.info->thumbwheel.wheel_count>=1000&&rc_sensor.info->thumbwheel.wheel_count<=2000)
+						{
+							
+								shoot.record_status=record_long;
+						
+						}
+						else if(rc_sensor.info->thumbwheel.wheel_count>=50&&rc_sensor.info->thumbwheel.wheel_count<=1000)
+						{
+							shoot.record_status=record_short;
+						}
+						else
+						{
+							shoot.record_status=record_zero;
+						}
+					}
+					else
+					{
+						rc_sensor.info->thumbwheel.wheel_count=0;
+						if(shoot.shoot_status!=off_fire)
+						{
+							switch(shoot.record_status)
+							{
+								case record_long:
+									shoot.shoot_status=running_fire;
+								break;
+								case record_short:
+									shoot.shoot_status=single_fire;
+								break;
+								case record_zero:
+									shoot.shoot_status=ready_fire;
+								break;
+								default:
+								break;
+							}
+						}
+					}
+	//			}
+			}
+			break;
+		default:
+			break;	
+		}
+	}
+	else/////////////ä¸Šç”µé»˜è®¤é™€èžºä»ªæŽ§åˆ¶
+	{
+				if(thumbweheel_step!=thumbweheel_last_step)
+			{
+				if(car->car_move_mode == gyro_CAR)
+				{
+					car->car_move_mode = cycle_CAR;
+				}
+				else if(car->car_move_mode == cycle_CAR)
+				{
+					car->car_move_mode = gyro_CAR;
+				}
+			}
+			
+			//æ‹¨æ†ä¸­é—´æ—¶ï¼Œåˆ‡æ¢åˆ°é™€èžºä»ªæ¨¡å¼  
+			if (car->car_move_mode != gyro_CAR &&
+				car->car_move_mode != cycle_CAR)
+			{
+				car->car_move_mode = gyro_CAR;
+			}
+			
+			if(car->car_move_mode==gyro_CAR ||
+				car->car_move_mode == cycle_CAR)
+			{
+	//			if(rc_sensor.info->s1.value==rc_sensor.info->s1.value_last)
+	//			{}
+	//			else
+	//			{
+					switch(rc_sensor.info->s1.value)
+					{
+						case 0x01:
+							shoot.shoot_status=ready_fire;
+							//åœ¨è¿™é‡ŒåŠ æ³¢è½®æŽ§åˆ¶åˆå§‹åŒ–noï¼Œstaticé‚£é‡ŒåŠ åˆ¤æ–­noï¼Œok
+							if(thumbwheel_step!=thumbwheel_last_step)
+								{
+									shoot.base_info.dail_info.dail_reset_state=DEV_RESET_NO;
+								}
+						//
+
+						break;
+						default:
+							shoot.shoot_status=off_fire;
+						break;
+					}
+					static int16_t thumbwheel_step,thumbwheel_last_step;
+	//				thumbweheel_last_step = thumbweheel_step;
+					thumbwheel_step = rc_sensor.info->thumbwheel.value;
+					if(thumbwheel_step>=550)
+					{
+						rc_sensor.info->thumbwheel.wheel_count++;
+						if(rc_sensor.info->thumbwheel.wheel_count>=1000&&rc_sensor.info->thumbwheel.wheel_count<=2000)
+						{
+							
+								shoot.record_status=record_long;
+						
+						}
+						else if(rc_sensor.info->thumbwheel.wheel_count>=50&&rc_sensor.info->thumbwheel.wheel_count<=1000)
+						{
+							shoot.record_status=record_short;
+						}
+						else
+						{
+							shoot.record_status=record_zero;
+						}
+					}
+					else
+					{
+						rc_sensor.info->thumbwheel.wheel_count=0;
+						if(shoot.shoot_status!=off_fire)
+						{
+							switch(shoot.record_status)
+							{
+								case record_long:
+									shoot.shoot_status=running_fire;
+								break;
+								case record_short:
+									shoot.shoot_status=single_fire;
+								break;
+								case record_zero:
+									shoot.shoot_status=ready_fire;
+								break;
+								default:
+								break;
+							}
+						}
+					}
+	//			}
+			}
+	
+	}
+}
+
+void Car_Move_Mode_Update(car_t *car)
+{
+	if(gimbal.gimbal_reset_state ==DEV_RESET_NO)
+	{
+		car->car_move_mode=init_CAR;
+	}
+	else if (car->car_ctrl_mode == RC_CTRL_MODE)//é¥æŽ§å™¨æ¨¡å¼
+		{
+			RC_Move_Mode_Update(car);//å³æ‹¨æ†æŽ§åˆ¶ç§»åŠ¨æ¨¡å¼
+		}
+		else{
+			Key_Move_Mode_Update(car);
+		}
+}
+uint16_t t;
+uint32_t last_tick=0;
+void Car_Ctrl(car_t *car) 
+{
+	/*é™€èžºä»ªåˆå§‹åŒ–ä¸æŽ§*/
+	if(bmi.Kp!=0.125)
+	{
+		if(HAL_GetTick()-last_tick>=800)
+			{bmi.Kp=0.125;}
+  }
+//	Car_Ctrl_Mode_Update(car);
+//  Car_Move_Mode_Update(car);
+	/* æ•´è½¦å‘½ä»¤æ›´æ–° */
+//    Command_Update(car);
+}
+
+void Car_Work(void)
+{
+	gimbal.work(&gimbal);
+	shoot.work(&shoot);
+}
+
+

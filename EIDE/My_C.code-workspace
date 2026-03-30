@@ -9,10 +9,22 @@
     ],
     "settings": {
         "terminal.integrated.shellIntegration.enabled": false,
+        "terminal.integrated.detectLocale": "off",
+        "terminal.integrated.defaultProfile.windows": "Command Prompt (GB2312)",
+        "terminal.integrated.profiles.windows": {
+            "Command Prompt (GB2312)": {
+                "path": "C:\\Windows\\System32\\cmd.exe",
+                "args": [
+                    "/k",
+                    "chcp 936>nul"
+                ]
+            }
+        },
         "clangd.arguments": [
             "--header-insertion=never"
         ],
-        "files.autoGuessEncoding": true,
+        "files.autoGuessEncoding": false,
+        "files.encoding": "gb2312",
         "C_Cpp.default.configurationProvider": "cl.eide",
         "C_Cpp.errorSquiggles": "disabled",
         "files.associations": {

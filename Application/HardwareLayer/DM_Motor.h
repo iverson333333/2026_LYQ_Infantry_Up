@@ -1,225 +1,225 @@
-#ifndef __DM_MOTOR_H
-#define __DM_MOTOR_H
-
-#include "stm32f4xx_hal.h"
-#include "rp_config.h"
-#include "arm_math.h"
-#include "HT_Motor.h"
-#include "drv_can.h"
-#include "drv_tick.h"
-#include "rp_math.h"
-#include "PID.h"
-
-#ifndef __HT_MOTOR_H
-/*µç»úÖ¸Áî¼¯*/
-typedef enum Motor_MIT_Command_enum_e
-{
-	Enter_Motor_Mode,	  // Ê¹ÄÜµç»ú¿ØÖÆ(Ö¸Ê¾µÆ±äÂÌ)
-	Exit_Motor_Mode,	  // Ê§ÄÜµç»ú¿ØÖÆ(Ö¸Ê¾µÆ±äºì)
-	Zero_Position_Sensor, // Éè¶¨µ±Ç°±àÂë½Ç¶ÈÎªÁã
-	Clear_Err,
-
-} Motor_MIT_Command_e;
-#endif
-#define KP_MIN 0.0f // N-m/rad
-#define KP_MAX 500.0f
-#define KD_MIN 0.0f // N-m/rad/s
-#define KD_MAX 5.0f
-
-#define P_MIN_8009 -PI // Radians
-#define P_MAX_8009 PI
-#define V_MIN_8009 -45.0f // Rad/s
-#define V_MAX_8009 45.0f
-#define KP_MIN_8009 0.0f // N-m/rad
-#define KP_MAX_8009 500.0f
-#define KD_MIN_8009 0.0f // N-m/rad/s
-#define KD_MAX_8009 5.0f
-#define T_MIN_8009 -54.0f // N.m
-#define T_MAX_8009 54.0f
-#define C_MIN_8009 -40.0f // A
-#define C_MAX_8009 40.0f
-
-#define P_MIN_4310 -PI // Radians
-#define P_MAX_4310 PI
-#define V_MIN_4310 -30.0f // Rad/s
-#define V_MAX_4310 30.0f
-#define KP_MIN_4310 0.0f // N-m/rad
-#define KP_MAX_4310 500.0f
-#define KD_MIN_4310 0.0f // N-m/rad/s
-#define KD_MAX_4310 5.0f
-#define T_MIN_4310 -12.5f // N.m
-#define T_MAX_4310 12.5f
-#define C_MIN_4310 -10.0f // A
-#define C_MAX_4310 10.0f
-
-#define P_MIN_6006 -PI // Radians
-#define P_MAX_6006 PI
-#define V_MIN_6006 -45.0f // Rad/s
-#define V_MAX_6006 45.0f
-#define KP_MIN_6006 0.0f // N-m/rad
-#define KP_MAX_6006 500.0f
-#define KD_MIN_6006 0.0f // N-m/rad/s
-#define KD_MAX_6006 5.0f
-#define T_MIN_6006 -12.0f // N.m
-#define T_MAX_6006 12.0f
-#define C_MIN_6006 -10.0f // A
-#define C_MAX_6006 10.0f
-
-/*µç»úÊ¹ÄÜ×´Ì¬*/
-typedef enum Motor_HT_Work_state_enum_e
-{
-	Motor_Enable,	// µç»ú¿É¿Ø
-	Motor_Unenable, // µç»ú²»¿É¿Ø
-	Over_Voltage,	// ³¬Ñ¹
-	Lack_Voltage,	// Ç·Ñ¹
-	Over_Current,	// ¹ıÁ÷
-	MOS_OverTemp,	// Çı¶¯°åMOS¹ıÎÂ
-	Motor_OverTemp, // µç»ú¹ıÎÂ
-	Commun_Loss,	// Í¨ĞÅ¶ªÊ§
-	Unknow_Err,		// Î´Öª´íÎó
-} Motor_DM_Work_state_e;
-
-/*µç»ú³õÊ¼»¯²ÎÊı*/
-typedef struct Motor_DM_Born_Info_struct_t
-{
-	uint32_t txId; // µç»ú¿ØÖÆ±¨ÎÄID
-
-#ifdef __STM32F4xx_HAL_H
-	CAN_HandleTypeDef *hcan; // can¿ÚÑ¡Ôñ
-#endif
-
-#ifdef STM32H7xx_HAL_H
-	FDCAN_HandleTypeDef *hcan; // can¿ÚÑ¡Ôñ
-#endif
-
-	int8_t order_correction; // Å¤¾ØÕı·½Ïò¹æ¶¨
-} Motor_DM_Born_Info_t;
-
-/*½ÓÊÕµç»ú±¨ÎÄĞÅÏ¢½á¹¹Ìå*/
-typedef struct Motor_DM_Rx_Info_struct_t
-{
-	float speed; // µç»úËÙ¶È(µ¥Î»rad/s)
-
-	float torque; // µç»ú×ª¾Ø(µ¥Î»N.m)
-
-	float motor_angle_sum;
-
-	float motor_angle; // µç»ú»¡¶ÈÖÆ¾ø¶Ô½Ç¶È£¬-PI~PI
-
-	float motor_angle_last;
-
-	uint8_t ERR;
-	uint16_t T_MOS;
-	uint16_t T_Rotor;
-
-	uint8_t num; // ¶àµç»ú·¢ËÍË³ĞòºÅ
-} Motor_DM_Rx_Info_t;
-
-/*·¢ËÍµç»ú±¨ÎÄĞÅÏ¢½á¹¹Ìå*/
-typedef struct Motor_DM_Tx_Info_struct_t
-{
-	float torque; // ĞèÒª·¢ËÍµÄ×ª¾Ø(µ¥Î»N.m)
-
-	float target_speed; // Ä¿±êËÙ¶È(µ¥Î»rad/s)
-
-	float target_angle; // Ä¿±ê½Ç¶È(µ¥Î»rad)
-
-	float Kp; // Î»ÖÃÔöÒæ
-
-	float Kd; // ËÙ¶ÈÔöÒæ
-
-	uint8_t single_tx_buff[8]; // Ê¹ÓÃµç»ú·¢ËÍÊ±µÄ¸öÈËÊı×é
-} Motor_DM_Tx_Info_t;
-/* Çı¶¯²Î¿¼Á¦¾Ø = (torque + Kp*err_angle + Kd*err_speed) */
-
-typedef struct Motor_DM_Ctrl_Info_struct_t
-{
-	bool Speed_Input_Flag;		  // Ê¹ÓÃÍâ²¿´«¸ĞÆ÷µÄËÙ¶È±êÖ¾Î»£º0²»Ê¹ÓÃ£¬1Ê¹ÓÃ
-	pid_ctrl_t *angle_ctrl_inner; // ½Ç¶È»·ÄÚ»·
-
-	bool Angle_Input_Flag;		  // Ê¹ÓÃÍâ²¿´«¸ĞÆ÷µÄ½Ç¶È±êÖ¾Î»£º0²»Ê¹ÓÃ£¬1Ê¹ÓÃ
-	bool Nearest_Return;		  // °ëÈ¦´¦Àí±êÖ¾Î»£º0²»Ê¹ÓÃ£¬1Ê¹ÓÃ
-	pid_ctrl_t *angle_ctrl_outer; // ½Ç¶È»·Íâ»·
-
-	pid_ctrl_t *speed_ctrl; // ËÙ¶È»·
-	pid_ctrl_t *position_inn;
-	pid_ctrl_t *position_out;
-} Motor_DM_Ctrl_Info_t;
-
-/*µç»ú×´Ì¬½á¹¹Ìå*/
-typedef struct Motor_DM_State_struct_t
-{
-	uint32_t offline_cnt;
-
-	uint32_t offline_cnt_max;
-
-	dev_work_state_t status;
-
-	Motor_DM_Work_state_e motor_state;
-
-	Motor_DM_Work_state_e last_motor_state;
-} Motor_DM_State_t;
-
-/*µç»úÀàĞÍ½á¹¹Ìå*/
-typedef enum Motor_DM_TYPE_struct_e
-{
-	leg_8009,
-	dm_4310,
-	dm_6006,
-
-} Motor_DM_TYPE_e;
-
-/*µ¥µç»ú×Ü½á¹¹Ìå*/
-typedef struct Motor_DM_struct_t
-{
-	Motor_DM_Born_Info_t *born_info;
-
-	Motor_DM_Rx_Info_t *rx_info;
-
-	Motor_DM_Tx_Info_t *tx_info;
-
-	Motor_DM_State_t *state;
-
-	Motor_DM_Ctrl_Info_t *ctrl;
-
-	Motor_DM_TYPE_e type;
-
-	void (*single_init)(struct Motor_DM_struct_t *motor);
-
-	void (*single_sleep)(struct Motor_DM_struct_t *motor);
-
-	void (*zero_position)(struct Motor_DM_struct_t *motor);
-
-	void (*single_set_torque)(struct Motor_DM_struct_t *motor);
-
-	void (*single_set_speed)(struct Motor_DM_struct_t *motor);
-
-	void (*single_set_angle)(struct Motor_DM_struct_t *motor);
-
-	void (*rx)(struct Motor_DM_struct_t *motor, uint8_t *rxBuf);
-
-	void (*single_heart_beat)(struct Motor_DM_struct_t *motor);
-} Motor_DM_t;
-
-/*¶àµç»ú½á¹¹Ìå£¬ÓÉÓÚÊ¹ÓÃMITµ¥µç»ú¿ØÖÆ£¬¸Ã½á¹¹ÌåÖ»ÊÇ°Ñµ¥µç»úµÄÒ»Ğ©Í¨ÓÃµÄ¹¦ÄÜÕûºÏÆğÀ´£¬·½±ã¿ØÖÆ£¬²¢²»ÊÇÕæÕıµÄ¶àµç»úÄ£Ê½*/
-typedef struct Motor_DM_Group_struct_t
-{
-	Motor_DM_t *motor[4];
-
-	uint8_t motor_num; // Êµ¼Êµç»úÊıÁ¿
-
-	void (*group_set_torque)(struct Motor_DM_Group_struct_t *group);
-
-	void (*group_sleep)(struct Motor_DM_Group_struct_t *group);
-
-	void (*group_init)(struct Motor_DM_Group_struct_t *group);
-
-	void (*group_heartbeat)(struct Motor_DM_Group_struct_t *group);
-} Motor_DM_Group_t;
-
-void DM_Single_Motor_Init(Motor_DM_t *motor);
-void Group_Motor_Init(Motor_DM_Group_t *group);
-void DM_Single_Motor_Set(Motor_DM_t *motor);
-void Motor_Set_Angle_Position_DM(Motor_DM_t *motor);
-void Motor_Set_Speed_Position_DM(Motor_DM_t *motor);
-#endif
+#ifndef __DM_MOTOR_H
+#define __DM_MOTOR_H
+
+#include "stm32f4xx_hal.h"
+#include "rp_config.h"
+#include "arm_math.h"
+#include "HT_Motor.h"
+#include "drv_can.h"
+#include "drv_tick.h"
+#include "rp_math.h"
+#include "PID.h"
+
+#ifndef __HT_MOTOR_H
+/*ç”µæœºæŒ‡ä»¤é›†*/
+typedef enum Motor_MIT_Command_enum_e
+{
+	Enter_Motor_Mode,	  // ä½¿èƒ½ç”µæœºæ§åˆ¶(æŒ‡ç¤ºç¯å˜ç»¿)
+	Exit_Motor_Mode,	  // å¤±èƒ½ç”µæœºæ§åˆ¶(æŒ‡ç¤ºç¯å˜çº¢)
+	Zero_Position_Sensor, // è®¾å®šå½“å‰ç¼–ç è§’åº¦ä¸ºé›¶
+	Clear_Err,
+
+} Motor_MIT_Command_e;
+#endif
+#define KP_MIN 0.0f // N-m/rad
+#define KP_MAX 500.0f
+#define KD_MIN 0.0f // N-m/rad/s
+#define KD_MAX 5.0f
+
+#define P_MIN_8009 -PI // Radians
+#define P_MAX_8009 PI
+#define V_MIN_8009 -45.0f // Rad/s
+#define V_MAX_8009 45.0f
+#define KP_MIN_8009 0.0f // N-m/rad
+#define KP_MAX_8009 500.0f
+#define KD_MIN_8009 0.0f // N-m/rad/s
+#define KD_MAX_8009 5.0f
+#define T_MIN_8009 -54.0f // N.m
+#define T_MAX_8009 54.0f
+#define C_MIN_8009 -40.0f // A
+#define C_MAX_8009 40.0f
+
+#define P_MIN_4310 -PI // Radians
+#define P_MAX_4310 PI
+#define V_MIN_4310 -30.0f // Rad/s
+#define V_MAX_4310 30.0f
+#define KP_MIN_4310 0.0f // N-m/rad
+#define KP_MAX_4310 500.0f
+#define KD_MIN_4310 0.0f // N-m/rad/s
+#define KD_MAX_4310 5.0f
+#define T_MIN_4310 -12.5f // N.m
+#define T_MAX_4310 12.5f
+#define C_MIN_4310 -10.0f // A
+#define C_MAX_4310 10.0f
+
+#define P_MIN_6006 -PI // Radians
+#define P_MAX_6006 PI
+#define V_MIN_6006 -45.0f // Rad/s
+#define V_MAX_6006 45.0f
+#define KP_MIN_6006 0.0f // N-m/rad
+#define KP_MAX_6006 500.0f
+#define KD_MIN_6006 0.0f // N-m/rad/s
+#define KD_MAX_6006 5.0f
+#define T_MIN_6006 -12.0f // N.m
+#define T_MAX_6006 12.0f
+#define C_MIN_6006 -10.0f // A
+#define C_MAX_6006 10.0f
+
+/*ç”µæœºä½¿èƒ½çŠ¶æ€*/
+typedef enum Motor_HT_Work_state_enum_e
+{
+	Motor_Enable,	// ç”µæœºå¯æ§
+	Motor_Unenable, // ç”µæœºä¸å¯æ§
+	Over_Voltage,	// è¶…å‹
+	Lack_Voltage,	// æ¬ å‹
+	Over_Current,	// è¿‡æµ
+	MOS_OverTemp,	// é©±åŠ¨æ¿MOSè¿‡æ¸©
+	Motor_OverTemp, // ç”µæœºè¿‡æ¸©
+	Commun_Loss,	// é€šä¿¡ä¸¢å¤±
+	Unknow_Err,		// æœªçŸ¥é”™è¯¯
+} Motor_DM_Work_state_e;
+
+/*ç”µæœºåˆå§‹åŒ–å‚æ•°*/
+typedef struct Motor_DM_Born_Info_struct_t
+{
+	uint32_t txId; // ç”µæœºæ§åˆ¶æŠ¥æ–‡ID
+
+#ifdef __STM32F4xx_HAL_H
+	CAN_HandleTypeDef *hcan; // canå£é€‰æ‹©
+#endif
+
+#ifdef STM32H7xx_HAL_H
+	FDCAN_HandleTypeDef *hcan; // canå£é€‰æ‹©
+#endif
+
+	int8_t order_correction; // æ‰­çŸ©æ­£æ–¹å‘è§„å®š
+} Motor_DM_Born_Info_t;
+
+/*æ¥æ”¶ç”µæœºæŠ¥æ–‡ä¿¡æ¯ç»“æ„ä½“*/
+typedef struct Motor_DM_Rx_Info_struct_t
+{
+	float speed; // ç”µæœºé€Ÿåº¦(å•ä½rad/s)
+
+	float torque; // ç”µæœºè½¬çŸ©(å•ä½N.m)
+
+	float motor_angle_sum;
+
+	float motor_angle; // ç”µæœºå¼§åº¦åˆ¶ç»å¯¹è§’åº¦ï¼Œ-PI~PI
+
+	float motor_angle_last;
+
+	uint8_t ERR;
+	uint16_t T_MOS;
+	uint16_t T_Rotor;
+
+	uint8_t num; // å¤šç”µæœºå‘é€é¡ºåºå·
+} Motor_DM_Rx_Info_t;
+
+/*å‘é€ç”µæœºæŠ¥æ–‡ä¿¡æ¯ç»“æ„ä½“*/
+typedef struct Motor_DM_Tx_Info_struct_t
+{
+	float torque; // éœ€è¦å‘é€çš„è½¬çŸ©(å•ä½N.m)
+
+	float target_speed; // ç›®æ ‡é€Ÿåº¦(å•ä½rad/s)
+
+	float target_angle; // ç›®æ ‡è§’åº¦(å•ä½rad)
+
+	float Kp; // ä½ç½®å¢ç›Š
+
+	float Kd; // é€Ÿåº¦å¢ç›Š
+
+	uint8_t single_tx_buff[8]; // ä½¿ç”¨ç”µæœºå‘é€æ—¶çš„ä¸ªäººæ•°ç»„
+} Motor_DM_Tx_Info_t;
+/* é©±åŠ¨å‚è€ƒåŠ›çŸ© = (torque + Kp*err_angle + Kd*err_speed) */
+
+typedef struct Motor_DM_Ctrl_Info_struct_t
+{
+	bool Speed_Input_Flag;		  // ä½¿ç”¨å¤–éƒ¨ä¼ æ„Ÿå™¨çš„é€Ÿåº¦æ ‡å¿—ä½ï¼š0ä¸ä½¿ç”¨ï¼Œ1ä½¿ç”¨
+	pid_ctrl_t *angle_ctrl_inner; // è§’åº¦ç¯å†…ç¯
+
+	bool Angle_Input_Flag;		  // ä½¿ç”¨å¤–éƒ¨ä¼ æ„Ÿå™¨çš„è§’åº¦æ ‡å¿—ä½ï¼š0ä¸ä½¿ç”¨ï¼Œ1ä½¿ç”¨
+	bool Nearest_Return;		  // åŠåœˆå¤„ç†æ ‡å¿—ä½ï¼š0ä¸ä½¿ç”¨ï¼Œ1ä½¿ç”¨
+	pid_ctrl_t *angle_ctrl_outer; // è§’åº¦ç¯å¤–ç¯
+
+	pid_ctrl_t *speed_ctrl; // é€Ÿåº¦ç¯
+	pid_ctrl_t *position_inn;
+	pid_ctrl_t *position_out;
+} Motor_DM_Ctrl_Info_t;
+
+/*ç”µæœºçŠ¶æ€ç»“æ„ä½“*/
+typedef struct Motor_DM_State_struct_t
+{
+	uint32_t offline_cnt;
+
+	uint32_t offline_cnt_max;
+
+	dev_work_state_t status;
+
+	Motor_DM_Work_state_e motor_state;
+
+	Motor_DM_Work_state_e last_motor_state;
+} Motor_DM_State_t;
+
+/*ç”µæœºç±»å‹ç»“æ„ä½“*/
+typedef enum Motor_DM_TYPE_struct_e
+{
+	leg_8009,
+	dm_4310,
+	dm_6006,
+
+} Motor_DM_TYPE_e;
+
+/*å•ç”µæœºæ€»ç»“æ„ä½“*/
+typedef struct Motor_DM_struct_t
+{
+	Motor_DM_Born_Info_t *born_info;
+
+	Motor_DM_Rx_Info_t *rx_info;
+
+	Motor_DM_Tx_Info_t *tx_info;
+
+	Motor_DM_State_t *state;
+
+	Motor_DM_Ctrl_Info_t *ctrl;
+
+	Motor_DM_TYPE_e type;
+
+	void (*single_init)(struct Motor_DM_struct_t *motor);
+
+	void (*single_sleep)(struct Motor_DM_struct_t *motor);
+
+	void (*zero_position)(struct Motor_DM_struct_t *motor);
+
+	void (*single_set_torque)(struct Motor_DM_struct_t *motor);
+
+	void (*single_set_speed)(struct Motor_DM_struct_t *motor);
+
+	void (*single_set_angle)(struct Motor_DM_struct_t *motor);
+
+	void (*rx)(struct Motor_DM_struct_t *motor, uint8_t *rxBuf);
+
+	void (*single_heart_beat)(struct Motor_DM_struct_t *motor);
+} Motor_DM_t;
+
+/*å¤šç”µæœºç»“æ„ä½“ï¼Œç”±äºä½¿ç”¨MITå•ç”µæœºæ§åˆ¶ï¼Œè¯¥ç»“æ„ä½“åªæ˜¯æŠŠå•ç”µæœºçš„ä¸€äº›é€šç”¨çš„åŠŸèƒ½æ•´åˆèµ·æ¥ï¼Œæ–¹ä¾¿æ§åˆ¶ï¼Œå¹¶ä¸æ˜¯çœŸæ­£çš„å¤šç”µæœºæ¨¡å¼*/
+typedef struct Motor_DM_Group_struct_t
+{
+	Motor_DM_t *motor[4];
+
+	uint8_t motor_num; // å®é™…ç”µæœºæ•°é‡
+
+	void (*group_set_torque)(struct Motor_DM_Group_struct_t *group);
+
+	void (*group_sleep)(struct Motor_DM_Group_struct_t *group);
+
+	void (*group_init)(struct Motor_DM_Group_struct_t *group);
+
+	void (*group_heartbeat)(struct Motor_DM_Group_struct_t *group);
+} Motor_DM_Group_t;
+
+void DM_Single_Motor_Init(Motor_DM_t *motor);
+void Group_Motor_Init(Motor_DM_Group_t *group);
+void DM_Single_Motor_Set(Motor_DM_t *motor);
+void Motor_Set_Angle_Position_DM(Motor_DM_t *motor);
+void Motor_Set_Speed_Position_DM(Motor_DM_t *motor);
+#endif

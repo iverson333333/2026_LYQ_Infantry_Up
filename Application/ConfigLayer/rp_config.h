@@ -1,33 +1,33 @@
-
-#ifndef __RP_CONFIG_H
-#define __RP_CONFIG_H
-
-/* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx_hal.h"
-#include "stdbool.h"
-#include "string.h"
-// Çı¶¯²ãÅäÖÃ
-#include "rp_driver_config.h"
-// Éè±¸²ãÅäÖÃ
-#include "rp_device_config.h"
-// ÓÃ»§²ãÅäÖÃ
-#include "rp_user_config.h"
-
-/* Exported macro ------------------------------------------------------------*/
-
-/*Ñ¡ÔñIMU½âËãËã·¨ÎªMahony*/
-#define IMU_USE_MAHONY 1
-/*Ñ¡ÔñIMU½âËãËã·¨ÎªEKF*/
-#define IMU_USE_EKF 0
-/*ÓÃ´®¿ÚÍ¨ĞÅ¶¨Òå*/
-// #define UART_COMMUNICATE
-
-// #define TEST
-
-/* Ä¦²ÁÂÖ¿ØÖÆÄ£Ê½: 0=½öL/R, 1=U/L/R */
-#define SHOOT_CTRL_WITH_UP_FRIC 0
-
-/* Exported types ------------------------------------------------------------*/
-/* Exported functions --------------------------------------------------------*/
-
-#endif
+
+#ifndef __RP_CONFIG_H
+#define __RP_CONFIG_H
+
+/* Includes ------------------------------------------------------------------*/
+#include "stm32f4xx_hal.h"
+#include "stdbool.h"
+#include "string.h"
+// é©±åŠ¨å±‚é…ç½®
+#include "rp_driver_config.h"
+// è®¾å¤‡å±‚é…ç½®
+#include "rp_device_config.h"
+// ç”¨æˆ·å±‚é…ç½®
+#include "rp_user_config.h"
+
+/* Exported macro ------------------------------------------------------------*/
+
+/*é€‰æ‹©IMUè§£ç®—ç®—æ³•ä¸ºMahony*/
+#define IMU_USE_MAHONY 1
+/*é€‰æ‹©IMUè§£ç®—ç®—æ³•ä¸ºEKF*/
+#define IMU_USE_EKF 0
+/*ç”¨ä¸²å£é€šä¿¡å®šä¹‰*/
+// #define UART_COMMUNICATE
+
+// #define TEST
+
+/* æ‘©æ“¦è½®æ§åˆ¶æ¨¡å¼: 0=ä»…L/R, 1=U/L/R */
+#define SHOOT_CTRL_WITH_UP_FRIC 0
+
+/* Exported types ------------------------------------------------------------*/
+/* Exported functions --------------------------------------------------------*/
+
+#endif

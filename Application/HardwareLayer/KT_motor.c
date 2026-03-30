@@ -1,878 +1,878 @@
-#include "KT_motor.h"
-
-/* Exported variables --------------------------------------------------------*/
-extern CAN_HandleTypeDef hcan1;
-extern CAN_HandleTypeDef hcan2;
-
-/* Private functions ---------------------------------------------------------*/
-void KT_motor_class_heartbeat(KT_motor_t *motor);
-void kt_motor_class_pid_init(KT_motor_t *motor);
-
-
-void get_kt_motor_info(KT_motor_t *motor, uint8_t *rxBuf);  
-void tx_kt_motor_W_command(KT_motor_t *motor, uint8_t command);
-void tx_kt_motor_R_command(KT_motor_t *motor, uint8_t command);
-
-
-//ÉèÖÃPID²ÎÊı
-void write_kt_motor_pid_param(KT_motor_t *motor, uint8_t* buff);
-
-//Ğ´¼ÓËÙ¶È²ÎÊı
-void write_kt_motor_accel_param(KT_motor_t *motor, int32_t accel);
-
-//µç»úÁãµã
-void write_kt_motor_encoderOffset_param(KT_motor_t *motor, uint16_t encoderOffset);
-
-//Êä³ö¹¦ÂÊ¿ØÖÆ
-void write_kt_motor_powerControl_param(KT_motor_t *motor, int16_t powerControl);
-
-//×ª¾Ø±Õ»·¿ØÖÆ
-void write_kt_motor_iqControl_param(KT_motor_t *motor, int16_t iqControl);
-
-//ËÙ¶È±Õ»·¿ØÖÆ
-void write_kt_motor_speedControl_param(KT_motor_t *motor, int32_t speedControl);
-
-//¶àÈ¦±Õ»·½Ç¶È¿ØÖÆ
-void write_kt_motor_angle_sum_Control_param(KT_motor_t    *motor, 
-																						int32_t       angle_sum_Control,
-	                                          uint16_t      angle_sum_Control_maxSpeed);
-
-//µ¥È¦±Õ»·½Ç¶È¿ØÖÆ
-void write_kt_motor_angle_single_Control_param(KT_motor_t   *motor, 
-																	 uint16_t     angle_single_Control,
-																	 uint8_t   	  angle_single_Control_spinDirection,
-																	 uint16_t			angle_single_Control_maxSpeed);
-
-//ÔöÁ¿Ê½½Ç¶È¿ØÖÆ
-void write_kt_motor_angle_add_Control_param(KT_motor_t   *motor, 
-																						int32_t      angle_add_Control,
-																			      uint16_t     angle_add_Control_maxSpeed);
-
-/* Exported functions --------------------------------------------------------*/
-
-void kt_enable(KT_motor_t *kt_motor)
-{
-	CAN_TxHeaderTypeDef CAN1_TxHeader1;
-	uint32_t TxMailBox0;
-	CAN1_TxHeader1.DLC=8;
-	CAN1_TxHeader1.ExtId=0;
-	CAN1_TxHeader1.IDE=CAN_ID_STD;
-	CAN1_TxHeader1.RTR=CAN_RTR_DATA;
-	CAN1_TxHeader1.StdId=kt_motor->KT_motor_info.id.tx_id; 
-	CAN1_TxHeader1.TransmitGlobalTime=DISABLE;
-	uint8_t data66[8]={0x88,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-	HAL_CAN_AddTxMessage(&hcan1,&CAN1_TxHeader1,data66,&TxMailBox0);
-}
-
-void canctrl_kt(KT_motor_t *kt_motor,int16_t current)
-{
-	CAN_TxHeaderTypeDef CAN1_TxHeader1;
-	uint32_t TxMailBox0;
-	CAN1_TxHeader1.DLC=8;
-	CAN1_TxHeader1.ExtId=0;
-	CAN1_TxHeader1.IDE=CAN_ID_STD;
-	CAN1_TxHeader1.RTR=CAN_RTR_DATA;
-	CAN1_TxHeader1.StdId=kt_motor->KT_motor_info.id.tx_id; 
-	CAN1_TxHeader1.TransmitGlobalTime=DISABLE;
-	uint8_t senddata[8]={0xA1,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-	int16_t curr=current;
-	
-	senddata[4] = *(uint8_t *)(&curr);
-	senddata[5] = *((uint8_t *)(&curr)+1);
-	
-	
-	HAL_CAN_AddTxMessage(&hcan1,&CAN1_TxHeader1,senddata,&TxMailBox0);
-}
-
-/**
- *	@brief	µç»ú³õÊ¼»¯£¬¸ºÔğÒ»Ğ©²ÎÊı¸³Öµ¡¢º¯ÊıÖ¸Õë¸³Öµ¡¢ÇåÁã·¢ËÍÊı×é¡¢ÇåÁã·¢ËÍµÄ½á¹¹Ìå²ÎÊı
- */
-void KT_motor_class_init(KT_motor_t *motor)
-{
-	
-	if(motor == NULL)
-		return;
-	
-	memset ( (uint8_t*)motor->tx_buff, 0, 8 );
-	memset ( &motor->KT_motor_info.tx_info, 0, 8);
-	
-	motor->KT_motor_info.state_info.init_flag         = M_INIT;
-	motor->KT_motor_info.state_info.offline_cnt_max   = OFFLINE_LINE_CNT_MAX;
-	motor->KT_motor_info.state_info.selfprotect_cnt_max   = SELFPROTECT_CNT_MAX;	
-	motor->KT_motor_info.state_info.offline_cnt      	 = 	0;
-	motor->KT_motor_info.state_info.selfprotect_cnt       = 0;
-	motor->KT_motor_info.state_info.work_state        = M_OFFLINE;	
-	motor->KT_motor_info.state_info.selfprotect_flag  = M_PROTECT_OFF;
-	
-
-	motor->heartbeat  = KT_motor_class_heartbeat;
-	
-	motor->get_info = get_kt_motor_info;
-	motor->tx_W_cmd = tx_kt_motor_W_command;
-	motor->tx_R_cmd = tx_kt_motor_R_command;
-	
-	motor->W_pid                  = write_kt_motor_pid_param;
-	motor->W_accel                = write_kt_motor_accel_param;
-	motor->W_encoderOffset        = write_kt_motor_encoderOffset_param;
-	motor->W_powerControl         = write_kt_motor_powerControl_param;
-	motor->W_iqControl            = write_kt_motor_iqControl_param;
-	motor->W_speedControl         = write_kt_motor_speedControl_param;
-	motor->W_angle_sum_Control    = write_kt_motor_angle_sum_Control_param;
-	motor->W_angle_single_Control = write_kt_motor_angle_single_Control_param;
-	motor->W_angle_add_Control    = write_kt_motor_angle_add_Control_param;
-	
-}
-
-/**
- *	@brief	µç»úĞÄÌø£¬Èç¹û·¢ÉúÊ§Áª£¬ÏÂÒ»´ÎÊÕµ½Êı¾İÊ±£¬offline_cnt»áÔÚµç»ú¸üĞÂÖĞ½øĞĞÇåÁã
- */
-void KT_motor_class_heartbeat(KT_motor_t *motor)
-{	
-	static int16_t current_last;
-	if(motor == NULL)	
-		return;
-			
-	KT_motor_state_info_t *state_info = &motor->KT_motor_info.state_info;
-
-	if(state_info->init_flag == M_DEINIT)
-	{
-		state_info->work_state = M_INIT_ERR;
-		return;
-	}
-		
-	state_info->offline_cnt++;
-	//·¢¹ıÀ´µÄµçÁ÷Ò»Ö±ÏàÍ¬ÅĞ¶ÏÎª½øÈëµçÁ÷±£»¤
-	if(motor->KT_motor_info.rx_info.current==current_last)
-	{
-		state_info->selfprotect_cnt++;
-	}
-	current_last=motor->KT_motor_info.rx_info.current;
-	
-	if(state_info->offline_cnt > state_info->offline_cnt_max) 
-	{
-		state_info->offline_cnt = state_info->offline_cnt_max;
-		state_info->work_state = M_OFFLINE;
-	}
-	else 
-	{
-		if(state_info->work_state == M_OFFLINE)
-			state_info->work_state = M_ONLINE;
-	}
-	
-	if(state_info->selfprotect_cnt > state_info->selfprotect_cnt_max) 
-	{
-		state_info->selfprotect_cnt = state_info->selfprotect_cnt_max;
-		state_info->selfprotect_flag = M_PROTECT_ON;
-	//	motor->tx_W_cmd(motor,MOTOR_RUN_ID);
-	}
-	else 
-	{
-		if(state_info->selfprotect_flag == M_PROTECT_ON)
-		{
-			state_info->selfprotect_flag = M_PROTECT_OFF;
-			state_info->selfprotect_cnt =0;
-		}
-			
-	}
-}
-
-
-/**
- *	@brief	³õÊ¼»¯µç»úµÄPID·¢ËÍ¡¢½ÓÊÕ½á¹¹Ìå
- */
-void kt_motor_class_pid_init(KT_motor_t *motor)
-{
-	if(motor == NULL)	
-		return;
-
-	KT_motor_pid_t *pid = &motor->KT_motor_info.pid_info;
-	
-	pid->init_flag     = M_INIT;
-	
-	pid->rx.angleKp    = 0;
-	pid->rx.angleKi    = 0;
-	pid->rx.speedKp    = 0;
-	pid->rx.speedKi    = 0;
-	pid->rx.iqKp       = 0;
-	pid->rx.iqKi       = 0;
-
-	
-	pid->tx.angleKp    = 10;
-	pid->tx.angleKi    = 1;
-	pid->tx.speedKp    = 10;
-	pid->tx.speedKi    = 1;
-	pid->tx.iqKp       = 1;
-	pid->tx.iqKi       = 1;
-
-}	
-
-
-/*--------------------------¶àµç»úÃüÁî²»ĞèÒªÔÙÊı×éÖĞÌîÈëÃüÁî-------------------------*/
-
-
-/** 
- *	@brief ¶àµç»ú¿ØÖÆ£¬ĞèÒªÔÚÍâ²¿°Ñ×î¶à4¸öµç»úµÄÅ¤¾ØµçÁ÷°´ÕÕIDºÅµÄË³Ğò×é³ÉÒ»¸öÊı×é
-					 Èç¹û´«ÈëµÄµç»úÊıĞ¡ÓÚ4£¬»á×Ô¶¯¼ì²é´«ÈëµÄÊı×éºó²¿·ÖÊÇ·ñÊÇ0£¬Èç¹û²»ÊÇ0£¬»áÉèÖÃÎª0
- */
-void kt_motor_multi_control(int16_t* iqControl, char kt_motor_num, motor_drive_e drive_type)
-{
-	//ÅĞ¶ÏµçÁ÷
-	for(int i = 0; i < kt_motor_num; i ++)
-	{
-		if( within_or_not(iqControl[i], -KT_TX_IQ_CONTROL_MAX, KT_TX_IQ_CONTROL_MAX) == Flase )
-			return;
-	}
-	
-	for(int i = kt_motor_num; i < 4 ; i ++)
-	{
-		if( iqControl[i] != 0 )
-			iqControl[i] = 0;
-	}
-	
-	uint8_t tx_buff[8] = {0};
-	
-	tx_buff[0] = (uint8_t) iqControl[0];
-	tx_buff[1] = (uint8_t) (iqControl[0] >> 8);
-	tx_buff[2] = (uint8_t) iqControl[1];
-	tx_buff[3] = (uint8_t) (iqControl[1] >> 8);
-	tx_buff[4] = (uint8_t) iqControl[2];
-	tx_buff[5] = (uint8_t) (iqControl[2] >> 8);
-	tx_buff[6] = (uint8_t) iqControl[3];
-	tx_buff[7] = (uint8_t) (iqControl[3] >> 8);
-	
-	if(drive_type == M_CAN1)
-	{
-		CAN_SendData(&hcan1, KT_MULTI_TX_ID, tx_buff);
-	}
-	else if(drive_type == M_CAN2)
-	{
-		CAN_SendData(&hcan2, KT_MULTI_TX_ID, tx_buff);
-	}
-	else
-		return;
-	
-}
-
-
-/*---------------------------ÒÔÏÂº¯Êı¶¼ÊÇÕë¶Ôµ¥µç»ú¿ØÖÆ----------------------------*/
-/** 
- *	@brief ¸øµç»ú·¢ËÍÓĞ¹Ø  Ğ´²ÎÊı»òÕßÏëÒªµÄ¿ØÖÆÄ£Ê½µÄÃüÁî£¬ÄÚ²¿ÒÑ¾­ÓĞcanµÄ·¢ËÍº¯Êı
- */
-void tx_kt_motor_W_command(KT_motor_t *motor, uint8_t command)
-{
-	
-	if( motor == NULL )
-		return;
-	
-	KT_motor_pid_t       *pid      = &motor->KT_motor_info.pid_info;
-	
-	KT_motor_tx_info_t   *tx_info  = &motor->KT_motor_info.tx_info;
-	
-	memset( (uint8_t*)motor->tx_buff, 0, 8 );
-	
-	switch(command)
-	{
-		case PID_TX_RAM_ID:  //Ğ´PID²ÎÊıµ½RAM
-			motor->tx_buff[0] = PID_TX_RAM_ID;
-			motor->tx_buff[1] = 0x00;
-		  motor->tx_buff[2] = pid->tx.angleKp;
-			motor->tx_buff[3] = pid->tx.angleKi;
-			motor->tx_buff[4] = pid->tx.speedKp;
-			motor->tx_buff[5] = pid->tx.speedKi;
-			motor->tx_buff[6] = pid->tx.iqKp;
-			motor->tx_buff[7] = pid->tx.iqKi;
-		break;
-		
-		case PID_TX_ROM_ID:  //Ğ´PID²ÎÊıµ½ROM
-			motor->tx_buff[0] = PID_TX_RAM_ID;
-			motor->tx_buff[1] = 0x00;
-		  motor->tx_buff[2] = pid->tx.angleKp;
-			motor->tx_buff[3] = pid->tx.angleKi;
-			motor->tx_buff[4] = pid->tx.speedKp;
-			motor->tx_buff[5] = pid->tx.speedKi;
-			motor->tx_buff[6] = pid->tx.iqKp;
-			motor->tx_buff[7] = pid->tx.iqKi;
-		break;
-		
-		case ACCEL_TX_ID:  //Ğ´¼ÓËÙ¶Èµ½RAM
-			motor->tx_buff[0] = ACCEL_TX_ID;
-			motor->tx_buff[1] = 0x00;
-		  motor->tx_buff[2] = 0x00;
-			motor->tx_buff[3] = 0x00;
-			motor->tx_buff[4] = (uint8_t) tx_info->accel;
-			motor->tx_buff[5] = (uint8_t) (tx_info->accel >> 8);
-			motor->tx_buff[6] = (uint8_t) (tx_info->accel >> 16);
-			motor->tx_buff[7] = (uint8_t) (tx_info->accel >> 24);
-		break;
-		
-		case ZERO_ENCODER_TX_ID:  //Ğ´±àÂëÆ÷Öµµ½ROM×÷Îªµç»úÁãµã
-			motor->tx_buff[0] = ZERO_ENCODER_TX_ID;
-			motor->tx_buff[1] = 0x00;
-		  motor->tx_buff[2] = 0x00;
-			motor->tx_buff[3] = 0x00;
-			motor->tx_buff[4] = 0x00;
-			motor->tx_buff[5] = 0x00;
-			motor->tx_buff[6] = (uint8_t) tx_info->encoderOffset;
-			motor->tx_buff[7] = (uint8_t) (tx_info->encoderOffset >> 8);
-		break;
-		
-		case ZERO_POSNOW_TX_ID:  //Ğ´µ±Ç°Î»ÖÃÖµµ½ROM×÷Îªµç»úÁãµã£¬¼õÉÙÊ¹ÓÃ
-			motor->tx_buff[0] = ZERO_POSNOW_TX_ID;
-			motor->tx_buff[1] = 0x00;
-		  motor->tx_buff[2] = 0x00;
-			motor->tx_buff[3] = 0x00;
-			motor->tx_buff[4] = 0x00;
-			motor->tx_buff[5] = 0x00;
-			motor->tx_buff[6] = (uint8_t) tx_info->encoderOffset;
-			motor->tx_buff[7] = (uint8_t) (tx_info->encoderOffset >> 8);
-		break;
-		
-		case MOTOR_CLOSE_ID:     //µç»ú¹Ø±ÕÃüÁî£¬Çå³ıÔËĞĞ×´Ì¬ºÍÖ®Ç°ÊÕµ½µÄÖ¸Áî
-			motor->tx_buff[0] = MOTOR_CLOSE_ID;
-		break;
-		
-		case MOTOR_STOP_ID:     //µç»úÍ£Ö¹ÃüÁî£¬Çå³ıÔËĞĞ×´Ì¬ºÍÖ®Ç°ÊÕµ½µÄÖ¸Áî
-			motor->tx_buff[0] = MOTOR_STOP_ID;
-		break;
-		
-		case MOTOR_RUN_ID:      //µç»úÔËĞĞ£¬´ÓÍ£Ö¹ÖĞ»Ö¸´
-			motor->tx_buff[0] = MOTOR_RUN_ID;
-		break;
-		
-		case TORQUE_OPEN_LOOP_ID:  //¿ª»·×ª¾Ø¿ØÖÆ£¬¿ØÖÆÊä³ö¹¦ÂÊ
-			motor->tx_buff[0] = TORQUE_OPEN_LOOP_ID;
-			motor->tx_buff[1] = 0x00;
-		  motor->tx_buff[2] = 0x00;
-			motor->tx_buff[3] = 0x00;
-			motor->tx_buff[4] = (uint8_t) tx_info->powerControl;
-			motor->tx_buff[5] = (uint8_t) (tx_info->powerControl >> 8);
-			motor->tx_buff[6] = 0x00;
-			motor->tx_buff[7] = 0x00;
-		break;
-		
-		case TORQUE_CLOSE_LOOP_ID:  //±Õ»·×ª¾Ø¿ØÖÆ£¬¿ØÖÆÅ¤¾ØµçÁ÷
-			motor->tx_buff[0] = TORQUE_CLOSE_LOOP_ID;
-			motor->tx_buff[1] = 0x00;
-		  motor->tx_buff[2] = 0x00;
-			motor->tx_buff[3] = 0x00;
-			motor->tx_buff[4] = *(uint8_t*) (&tx_info->iqControl);
-			motor->tx_buff[5] = *((uint8_t*)(&tx_info->iqControl)+1);
-			motor->tx_buff[6] = 0x00;
-			motor->tx_buff[7] = 0x00;
-		break;
-		
-		case SPEED_CLOSE_LOOP_ID:    //ËÙ¶È±Õ»·¿ØÖÆ
-			motor->tx_buff[0] = SPEED_CLOSE_LOOP_ID;
-			motor->tx_buff[1] = 0x00;
-		  motor->tx_buff[2] = 0x00;
-			motor->tx_buff[3] = 0x00;
-			motor->tx_buff[4] = (uint8_t) tx_info->speedControl;
-			motor->tx_buff[5] = (uint8_t) (tx_info->speedControl >> 8);
-			motor->tx_buff[6] = (uint8_t) (tx_info->speedControl >> 16);
-			motor->tx_buff[7] = (uint8_t) (tx_info->speedControl >> 24);
-		break;
-		
-		case POSI_CLOSE_LOOP_ID1:    //½Ç¶È×ÜºÍ±Õ»·£¬ËÙ¶È²»ÏŞÖÆ
-			motor->tx_buff[0] = POSI_CLOSE_LOOP_ID1;
-			motor->tx_buff[1] = 0x00;
-		  motor->tx_buff[2] = 0x00;
-			motor->tx_buff[3] = 0x00;
-			motor->tx_buff[4] = (uint8_t) tx_info->angle_sum_Control;
-			motor->tx_buff[5] = (uint8_t) (tx_info->angle_sum_Control >> 8);
-			motor->tx_buff[6] = (uint8_t) (tx_info->angle_sum_Control >> 16);
-			motor->tx_buff[7] = (uint8_t) (tx_info->angle_sum_Control >> 24);
-		break;
-		
-		case POSI_CLOSE_LOOP_ID2:    //½Ç¶È×ÜºÍ±Õ»·£¬ËÙ¶ÈÏŞÖÆ
-			motor->tx_buff[0] = POSI_CLOSE_LOOP_ID2;
-			motor->tx_buff[1] = 0x00;
-		  motor->tx_buff[2] = (uint8_t) tx_info->angle_sum_Control_maxSpeed;
-			motor->tx_buff[3] = (uint8_t) (tx_info->angle_sum_Control_maxSpeed >> 8);
-			motor->tx_buff[4] = (uint8_t) tx_info->angle_sum_Control;
-			motor->tx_buff[5] = (uint8_t) (tx_info->angle_sum_Control >> 8);
-			motor->tx_buff[6] = (uint8_t) (tx_info->angle_sum_Control >> 16);
-			motor->tx_buff[7] = (uint8_t) (tx_info->angle_sum_Control >> 24);
-		break;
-		
-		case POSI_CLOSE_LOOP_ID3:    //µ¥È¦½Ç¶È£¬ÓĞ·½Ïò
-			motor->tx_buff[0] = POSI_CLOSE_LOOP_ID3;
-			motor->tx_buff[1] = (uint8_t) tx_info->angle_single_Control_spinDirection;
-		  motor->tx_buff[2] = 0x00;
-			motor->tx_buff[3] = 0x00;
-			motor->tx_buff[4] = (uint8_t) tx_info->angle_single_Control;
-			motor->tx_buff[5] = (uint8_t) (tx_info->angle_single_Control >> 8);
-			motor->tx_buff[6] = 0x00;
-			motor->tx_buff[7] = 0x00;
-		break;
-		
-		case POSI_CLOSE_LOOP_ID4:    //µ¥È¦½Ç¶È£¬ÓĞ·½Ïò£¬ÓĞ×î¸ß×ªËÙ
-			motor->tx_buff[0] = POSI_CLOSE_LOOP_ID4;
-			motor->tx_buff[1] = (uint8_t) tx_info->angle_single_Control_spinDirection;
-		  motor->tx_buff[2] = (uint8_t) tx_info->angle_single_Control_maxSpeed;
-			motor->tx_buff[3] = (uint8_t) (tx_info->angle_single_Control_maxSpeed >> 8);
-			motor->tx_buff[4] = (uint8_t) tx_info->angle_single_Control;
-			motor->tx_buff[5] = (uint8_t) (tx_info->angle_single_Control >> 8);
-			motor->tx_buff[6] = 0x00;
-			motor->tx_buff[7] = 0x00;
-		break;
-		
-		case POSI_CLOSE_LOOP_ID5:    //½Ç¶ÈÔöÁ¿£¬ÎŞËÙ¶ÈÏŞÖÆ
-			motor->tx_buff[0] = POSI_CLOSE_LOOP_ID5;
-			motor->tx_buff[1] = 0x00;
-		  motor->tx_buff[2] = 0x00;
-			motor->tx_buff[3] = 0x00;
-			motor->tx_buff[4] = (uint8_t) tx_info->angle_add_Control;
-			motor->tx_buff[5] = (uint8_t) (tx_info->angle_add_Control >> 8);
-			motor->tx_buff[6] = (uint8_t) (tx_info->angle_add_Control >> 16);
-			motor->tx_buff[7] = (uint8_t) (tx_info->angle_add_Control >> 24);
-		break;
-				
-		case POSI_CLOSE_LOOP_ID6:    //½Ç¶ÈÔöÁ¿£¬ÓĞËÙ¶ÈÏŞÖÆ
-			motor->tx_buff[0] = POSI_CLOSE_LOOP_ID6;
-			motor->tx_buff[1] = 0x00;
-		  motor->tx_buff[2] = (uint8_t) tx_info->angle_add_Control_maxSpeed;
-			motor->tx_buff[3] = (uint8_t) (tx_info->angle_add_Control_maxSpeed >> 8);
-			motor->tx_buff[4] = (uint8_t) tx_info->angle_add_Control;
-			motor->tx_buff[5] = (uint8_t) (tx_info->angle_add_Control >> 8);
-			motor->tx_buff[6] = (uint8_t) (tx_info->angle_add_Control >> 16);
-			motor->tx_buff[7] = (uint8_t) (tx_info->angle_add_Control >> 24);
-		break;
-		
-		
-		default:
-			break;
-	}
-	
-	if(motor->KT_motor_info.id.drive_type == M_CAN1)
-	{
-		CAN_SendData(&hcan1, motor->KT_motor_info.id.tx_id, motor->tx_buff);
-	}
-	else if(motor->KT_motor_info.id.drive_type == M_CAN2)
-	{
-		CAN_SendData(&hcan2, motor->KT_motor_info.id.tx_id, motor->tx_buff);
-	}
-	else
-		return;
-}
-	
-
-
-
-/** 
- *	@brief ¸øµç»ú·¢ËÍÖ÷¶¯¶ÁÈ¡Ä³Ğ©²ÎÊıµÄÃüÁî£¬ÄÚ²¿ÒÑ¾­ÓĞcanµÄ·¢ËÍº¯Êı
- */
-void tx_kt_motor_R_command(KT_motor_t *motor, uint8_t command)
-{
-	if( motor == NULL )
-		return;
-	
-	memset( (uint8_t*)motor->tx_buff, 0, 8 );
-	
-	switch(command)
-	{
-		case PID_RX_ID:   	//¶ÁÈ¡·¢ËÍPID½á¹¹Ìå²ÎÊı
-			motor->tx_buff[0] = PID_RX_ID;
-		break;
-		
-		case ACCEL_RX_ID:   //¶ÁÈ¡·¢ËÍµÄ½á¹¹ÌåÖĞµÄ¼ÓËÙ¶È²ÎÊı
-			motor->tx_buff[0] = ACCEL_RX_ID;
-		break;
-		
-		case ENCODER_RX_ID:   //¶ÁÈ¡·¢ËÍ½á¹¹ÌåÖĞµÄ±àÂëÆ÷Êı¾İ
-			motor->tx_buff[0] = ENCODER_RX_ID;
-		break;
-		
-		case MOTOR_ANGLE_ID:  //¶ÁÈ¡µç»ú¶àÈ¦¾ø¶Ô½Ç¶È
-		 motor->tx_buff[0] = MOTOR_ANGLE_ID;
-		break;
-		
-		case CIRCLE_ANGLE_ID:  //¶ÁÈ¡µç»úµ¥È¦½Ç¶È
-			motor->tx_buff[0] = CIRCLE_ANGLE_ID;
-		break;
-		
-		case STATE1_ID:        //¶ÁÈ¡µç»ú×´Ì¬1ºÍ´íÎó±êÖ¾Î»
-			motor->tx_buff[0] = STATE1_ID;
-		break;
-		
-		case STATE2_ID:        //¶ÁÈ¡µç»ú×´Ì¬2
-			motor->tx_buff[0] = STATE2_ID;
-		break;
-		
-		case STATE3_ID:        //¶ÁÈ¡µç»ú×´Ì¬3
-			motor->tx_buff[0] = STATE3_ID;
-		break;
-		
-		default:
-			break;
-	}
-	
-	if(motor->KT_motor_info.id.drive_type == M_CAN1)
-	{
-		CAN_SendData(&hcan1, motor->KT_motor_info.id.tx_id, motor->tx_buff);
-	}
-	else if(motor->KT_motor_info.id.drive_type == M_CAN2)
-	{
-		CAN_SendData(&hcan2, motor->KT_motor_info.id.tx_id, motor->tx_buff);
-	}
-	else
-		return;
-}
-
-
-
-/**
- *	@brief	½ÓÊÕµç»ú·¢À´µÄĞÅÏ¢²¢×Ô¶¯¸üĞÂ£¬ĞèÒª×¢Òâ£¬´ó²¿·Ö·¢ËÍ¸øµç»úµÄÖ¸Áî£¬µç»úÒ²»á·µ»ØÒ»Ğ©Êı¾İ
-						Èç¹û´«Èë¿ÕÖ¸Õë£¬ÈÏÎªµç»úÊı¾İ³ö´í£¬²¢·µ»Ø
-						×îºóÃæ»á¸ù¾İ½ÓÊÕ½á¹¹ÌåµÄerrorStateÅĞ¶ÏÊÇ·ñÒª×ÔÎÒ±£»¤
- *  @return
- */
-void get_kt_motor_info(KT_motor_t *motor, uint8_t *rxBuf)
-{
-	if( motor == NULL || rxBuf == NULL )
-	{
-		motor->KT_motor_info.state_info.work_state = M_DATA_ERR;
-		return;
-	}	
-	
-	uint8_t ID = rxBuf[0];
-	
-	KT_motor_pid_rx_info_t *pid_rx_info = &motor->KT_motor_info.pid_info.rx;
-	KT_motor_rx_info_t     *rx_info     = &motor->KT_motor_info.rx_info;
-	KT_motor_state_info_t  *state_info  = &motor->KT_motor_info.state_info;
-	
-	state_info->offline_cnt = 0;
-	state_info->work_state = M_ONLINE;
-	
-	switch (ID)
-	{
-		case PID_RX_ID:                      //Ö÷¶¯¶ÁÈ¡PID
-			pid_rx_info->angleKp = rxBuf[2];
-			pid_rx_info->angleKi = rxBuf[3];
-			pid_rx_info->speedKp = rxBuf[4];
-			pid_rx_info->speedKi = rxBuf[5];
-			pid_rx_info->iqKp	   = rxBuf[6];
-			pid_rx_info->iqKi	   = rxBuf[7];
-		break;
-		
-		case PID_TX_RAM_ID:                  //·¢ËÍPID²ÎÊıµ½RAMÊ±»á·µ»Ø
-			pid_rx_info->angleKp = rxBuf[2];
-			pid_rx_info->angleKi = rxBuf[3];
-			pid_rx_info->speedKp = rxBuf[4];
-			pid_rx_info->speedKi = rxBuf[5];
-			pid_rx_info->iqKp	   = rxBuf[6];
-			pid_rx_info->iqKi	   = rxBuf[7];
-		break;
-		
-		case PID_TX_ROM_ID:                  //·¢ËÍPID²ÎÊıµ½ROMÊ±»á·µ»Ø
-			pid_rx_info->angleKp = rxBuf[2];
-			pid_rx_info->angleKi = rxBuf[3];
-			pid_rx_info->speedKp = rxBuf[4];
-			pid_rx_info->speedKi = rxBuf[5];
-			pid_rx_info->iqKp	   = rxBuf[6];
-			pid_rx_info->iqKi	   = rxBuf[7];
-		break;
-		
-		case ACCEL_RX_ID:                    //Ö÷¶¯¶ÁÈ¡¼ÓËÙ¶È
-			rx_info->accel  = (int32_t)rxBuf[7];
-			rx_info->accel <<= 8;
-			rx_info->accel |= (int32_t)rxBuf[6];
-			rx_info->accel <<= 8;
-			rx_info->accel |= (int32_t)rxBuf[5];
-			rx_info->accel <<= 8;
-			rx_info->accel |= (int32_t)rxBuf[4];
-			rx_info->accel <<= 8;
-		break;
-		
-		case ACCEL_TX_ID:                    //·¢ËÍ¼ÓËÙ¶È²ÎÊıµ½RAM»á·µ»Ø
-			rx_info->accel  = (int32_t)rxBuf[7];
-			rx_info->accel <<= 8;
-			rx_info->accel |= (int32_t)rxBuf[6];
-			rx_info->accel <<= 8;
-			rx_info->accel |= (int32_t)rxBuf[5];
-			rx_info->accel <<= 8;
-			rx_info->accel |= (int32_t)rxBuf[4];
-			rx_info->accel <<= 8;
-		break;	
-		
-		case ENCODER_RX_ID:                   //Ö÷¶¯¶ÁÈ¡±àÂëÆ÷
-			rx_info->encoder = (uint16_t)rxBuf[3];
-			rx_info->encoder <<= 8;
-			rx_info->encoder |= (uint16_t)rxBuf[2];
-			rx_info->encoderRaw = (uint16_t)rxBuf[5];
-			rx_info->encoderRaw <<= 8;
-			rx_info->encoderRaw |= (uint16_t)rxBuf[4];
-			rx_info->encoderOffset = (uint16_t)rxBuf[7];
-			rx_info->encoderOffset <<= 8;
-			rx_info->encoderOffset |= (uint16_t)rxBuf[6];
-		break;
-		
-		case ZERO_ENCODER_TX_ID:              //Ğ´Èë±àÂëÆ÷Öµµ½ROM×÷Îªµç»úÁãµã»á·µ»Ø
-			rx_info->encoderOffset = (uint16_t)rxBuf[7];
-			rx_info->encoderOffset <<= 8;
-			rx_info->encoderOffset |= (uint16_t)rxBuf[6];
-		break;
-		
-		case ZERO_POSNOW_TX_ID:              //Ğ´Èë±àÂëÆ÷Öµµ½RAM×÷Îªµç»úÁãµã»á·µ»Ø
-			rx_info->encoderOffset = (uint16_t)rxBuf[7];
-			rx_info->encoderOffset <<= 8;
-			rx_info->encoderOffset |= (uint16_t)rxBuf[6];
-		break;
-		
-		
-		case MOTOR_ANGLE_ID:                  //Ö÷¶¯¶ÁÈ¡µç»ú¶àÈ¦¾ø¶Ô½Ç¶È£¬ÕıÖµË³Ê±ÕëÀÛ¼Æ½Ç¶È
-			rx_info->motorAngle  = (int64_t)rxBuf[7];
-			rx_info->motorAngle <<= 8;
-			rx_info->motorAngle |= (int64_t)rxBuf[6];
-			rx_info->motorAngle <<= 8;
-			rx_info->motorAngle |= (int64_t)rxBuf[5];
-			rx_info->motorAngle <<= 8;
-			rx_info->motorAngle |= (int64_t)rxBuf[4];
-			rx_info->motorAngle <<= 8;
-			rx_info->motorAngle |= (int64_t)rxBuf[3];
-			rx_info->motorAngle <<= 8;
-			rx_info->motorAngle |= (int64_t)rxBuf[2];
-			rx_info->motorAngle <<= 8;
-			rx_info->motorAngle |= (int64_t)rxBuf[1];
-		break;
-		
-		case CIRCLE_ANGLE_ID:                 //Ö÷¶¯¶ÁÈ¡µç»úµ¥È¦½Ç¶È
-			rx_info->circleAngle  = (uint32_t)rxBuf[7];
-			rx_info->circleAngle <<= 8;
-			rx_info->circleAngle |= (uint32_t)rxBuf[6];
-			rx_info->circleAngle <<= 8;
-			rx_info->circleAngle |= (uint32_t)rxBuf[5];
-			rx_info->circleAngle <<= 8;
-			rx_info->circleAngle |= (uint32_t)rxBuf[4];
-		break;
-		
-		case STATE1_ID:                       //Ö÷¶¯¶ÁÈ¡µç»ú×´Ì¬1ºÍ´íÎó±êÖ¾Î»
-			rx_info->temperature = (int8_t)rxBuf[1]; 
-			rx_info->voltage = (uint16_t)rxBuf[4];
-			rx_info->voltage <<= 8;
-			rx_info->voltage |= (uint16_t)rxBuf[3];
-			rx_info->errorState = rxBuf[7];
-		break;
-		
-		case STATE2_ID:                       //Ö÷¶¯¶ÁÈ¡µç»ú×´Ì¬2
-			rx_info->temperature = (int8_t)rxBuf[1];
-			rx_info->current = (int16_t)rxBuf[3];
-			rx_info->current <<= 8;
-			rx_info->current |= (int16_t)rxBuf[2];
-			rx_info->speed = (int16_t)rxBuf[5];
-			rx_info->speed <<= 8;
-			rx_info->speed |= (int16_t)rxBuf[4];
-			rx_info->encoder = (uint16_t)rxBuf[7];
-			rx_info->encoder <<= 8;
-			rx_info->encoder |= (uint16_t)rxBuf[6];
-		break;
-		
-		case STATE3_ID:                        //Ö÷¶¯¶ÁÈ¡µç»ú×´Ì¬3
-			rx_info->temperature = (int8_t)rxBuf[1];
-			rx_info->current_A = (int16_t)rxBuf[3];
-			rx_info->current_A <<= 8;
-			rx_info->current_A |= (int16_t)rxBuf[2];
-			rx_info->current_B = (int16_t)rxBuf[5];
-			rx_info->current_B <<= 8;
-			rx_info->current_B |= (int16_t)rxBuf[4];
-			rx_info->current_C = (int16_t)rxBuf[7];
-			rx_info->current_C <<= 8;
-			rx_info->current_C |= (int16_t)rxBuf[6];
-		break;
-		
-		case TORQUE_OPEN_LOOP_ID:              //Å¤¾Ø¿ª»·¿ØÖÆ»á×Ô¶¯·µ»Ø
-			rx_info->temperature = (int8_t)rxBuf[1]; 
-			rx_info->powerControl = (int16_t)rxBuf[3];
-			rx_info->powerControl <<= 8;	
-			rx_info->powerControl |= (int16_t)rxBuf[2];
-			rx_info->speed = (int16_t)rxBuf[5];
-			rx_info->speed <<= 8;
-			rx_info->speed |= (int16_t)rxBuf[4];
-			rx_info->encoder = (uint16_t)rxBuf[7];
-			rx_info->encoder <<= 8;
-			rx_info->encoder |= (uint16_t)rxBuf[6];
-		break;
-		
-		case  TORQUE_CLOSE_LOOP_ID:	//Å¤¾Ø±Õ»·¿ØÖÆ¡¢ËÙ¶È±Õ»·¡¢ËùÓĞÎ»ÖÃ±Õ»·¶¼»á·µ»Ø
-		case  SPEED_CLOSE_LOOP_ID :
-		case  POSI_CLOSE_LOOP_ID1 :
-		case  POSI_CLOSE_LOOP_ID2 :
-		case  POSI_CLOSE_LOOP_ID3 :
-		case  POSI_CLOSE_LOOP_ID4 :	
-		case  POSI_CLOSE_LOOP_ID5 :
-		case  POSI_CLOSE_LOOP_ID6 :
-			rx_info->temperature = (int8_t)rxBuf[1]; 
-			rx_info->current = (int16_t)rxBuf[3];
-			rx_info->current <<= 8;	
-			rx_info->current |= (int16_t)rxBuf[2];
-			rx_info->speed = (int16_t)rxBuf[5];
-			rx_info->speed <<= 8;
-			rx_info->speed |= (int16_t)rxBuf[4];
-			rx_info->encoder = (uint16_t)rxBuf[7];
-			rx_info->encoder <<= 8;
-			rx_info->encoder |= (uint16_t)rxBuf[6];
-		break;
-		
-		
-		default:
-			break;
-	}
-
-	
-}
-
-/**
- *	@briefĞ´µç»úµÄ·¢ËÍPID½á¹¹Ìå²ÎÊı£¬ÕûĞÍÊı×é½á¹¹{angleKp£¬angleKi£¬speedKp£¬speedKi£¬iqKp£¬iqKi£¬0£¬0}
- */
-void write_kt_motor_pid_param(KT_motor_t *motor, uint8_t* buff)
-{
-	if(motor == NULL || buff == NULL)
-		return;
-	
-	KT_motor_pid_t *pid = &motor->KT_motor_info.pid_info;
-	
-	pid->tx.angleKp    = buff[0];
-	pid->tx.angleKi    = buff[1];
-	pid->tx.speedKp    = buff[2];
-	pid->tx.speedKi    = buff[3];
-	pid->tx.iqKp       = buff[4];
-	pid->tx.iqKi       = buff[5];
-}
-
-
-/**
- *	@briefĞ´µç»úµÄ·¢ËÍ½á¹¹ÌåµÄ¼ÓËÙ¶È²ÎÊı
- */
-
-void write_kt_motor_accel_param(KT_motor_t *motor, int32_t accel)
-{
-	if(motor == NULL)
-		return;
-	
-	motor->KT_motor_info.tx_info.accel = accel;
-}
-
-
-/** 
- *	@brief Ğ´µç»úµÄ·¢ËÍ½á¹¹ÌåµÄµç»úÁãµã²ÎÊı
- */
-
-void write_kt_motor_encoderOffset_param(KT_motor_t *motor, uint16_t encoderOffset)
-{
-	if(motor == NULL)
-		return;
-	
-	//ÎŞ·ûºÅÊı¾İµ÷ÓÃwithin_or_not»á±¨¾¯¸æ
-	if( encoderOffset > KT_TX_ENCODER_OFFSET_MAX )
-	  return;
-	
-	motor->KT_motor_info.tx_info.encoderOffset = encoderOffset;
-}
-
-/** 
- *	@brief Ğ´µç»úµÄ·¢ËÍ½á¹¹ÌåµÄÊä³ö¹¦ÂÊ¿ØÖÆÄ¿±ê²ÎÊı
- */
-
-
-void write_kt_motor_powerControl_param(KT_motor_t *motor, int16_t powerControl)
-{
-	if(motor == NULL)
-		return;
-	
-	if( within_or_not(powerControl, -KT_TX_POWER_CONTROL_MAX, KT_TX_POWER_CONTROL_MAX) == Flase )
-	  return;
-	
-	motor->KT_motor_info.tx_info.powerControl = powerControl;
-}
-
-/** 
- *	@brief Ğ´µç»úµÄ·¢ËÍ½á¹¹ÌåµÄÅ¤¾ØµçÁ÷¿ØÖÆÄ¿±ê²ÎÊı
- */
-
-
-void write_kt_motor_iqControl_param(KT_motor_t *motor, int16_t iqControl)
-{
-	if(motor == NULL)
-		return;
-	
-	iqControl = constrain(iqControl, -KT_TX_IQ_CONTROL_MAX, KT_TX_IQ_CONTROL_MAX);
-	
-	motor->KT_motor_info.tx_info.iqControl = iqControl;
-}
-
-
-/** 
- *	@brief Ğ´µç»úµÄ·¢ËÍ½á¹¹ÌåµÄËÙ¶È¿ØÖÆÄ¿±ê²ÎÊı
- */
-
-void write_kt_motor_speedControl_param(KT_motor_t *motor, int32_t speedControl)
-{
-	if(motor == NULL)
-		return;
-		
-	motor->KT_motor_info.tx_info.speedControl = speedControl;
-}
-
-/** 
- *	@brief Ğ´µç»úµÄ·¢ËÍ½á¹¹ÌåµÄ¶àÈ¦½Ç¶È¿ØÖÆÉæ¼°µ½µÄ²ÎÊı
- */
-
-
-void write_kt_motor_angle_sum_Control_param(KT_motor_t    *motor, 
-																						int32_t       angle_sum_Control,
-	                                          uint16_t      angle_sum_Control_maxSpeed)
-{
-	if(motor == NULL)
-		return;
-		
-	motor->KT_motor_info.tx_info.angle_sum_Control = angle_sum_Control;
-	
-	motor->KT_motor_info.tx_info.angle_sum_Control_maxSpeed = angle_sum_Control_maxSpeed;
-}
-
-
-/** 
- *	@brief Ğ´µç»úµÄ·¢ËÍ½á¹¹ÌåµÄµ¥È¦½Ç¶È¿ØÖÆÉæ¼°µ½µÄ²ÎÊı
- */
-
-void write_kt_motor_angle_single_Control_param(KT_motor_t   *motor, 
-											 uint16_t     angle_single_Control,
-											 uint8_t   	  angle_single_Control_spinDirection,
-										     uint16_t			angle_single_Control_maxSpeed)
-{
-//	if(motor == NULL)
-//		return;
-//	
-//	//ÎŞ·ûºÅµ÷ÓÃwithin_or_not»á±¨¾¯¸æ
-//	if( angle_single_Control > KT_TX_ANGLE_SIGNLE_MAX )
-//		return;
-//	
-//	if( angle_single_Control_spinDirection != CLOCK_WISE ||
-//	   	angle_single_Control_spinDirection != N_CLOCK_WISE )
-//		return;
-	
-	
-	motor->KT_motor_info.tx_info.angle_single_Control = angle_single_Control;
-	
-	motor->KT_motor_info.tx_info.angle_single_Control_spinDirection = angle_single_Control_spinDirection;
-	
-	motor->KT_motor_info.tx_info.angle_single_Control_maxSpeed = angle_single_Control_maxSpeed;
-}
-
-/** 
- *	@brief Ğ´µç»úµÄ·¢ËÍ½á¹¹ÌåµÄ½Ç¶ÈÔöÁ¿¿ØÖÆÉæ¼°µ½µÄ²ÎÊı
- */
-
-void write_kt_motor_angle_add_Control_param(KT_motor_t   *motor, 
-																						int32_t      angle_add_Control,
-																			      uint16_t     angle_add_Control_maxSpeed)
-{
-	if(motor == NULL)
-		return;
-	
-	motor->KT_motor_info.tx_info.angle_add_Control = angle_add_Control;
-	
-	motor->KT_motor_info.tx_info.angle_add_Control_maxSpeed = angle_add_Control_maxSpeed;
-	
-}
-
-
+#include "KT_motor.h"
+
+/* Exported variables --------------------------------------------------------*/
+extern CAN_HandleTypeDef hcan1;
+extern CAN_HandleTypeDef hcan2;
+
+/* Private functions ---------------------------------------------------------*/
+void KT_motor_class_heartbeat(KT_motor_t *motor);
+void kt_motor_class_pid_init(KT_motor_t *motor);
+
+
+void get_kt_motor_info(KT_motor_t *motor, uint8_t *rxBuf);  
+void tx_kt_motor_W_command(KT_motor_t *motor, uint8_t command);
+void tx_kt_motor_R_command(KT_motor_t *motor, uint8_t command);
+
+
+//è®¾ç½®PIDå‚æ•°
+void write_kt_motor_pid_param(KT_motor_t *motor, uint8_t* buff);
+
+//å†™åŠ é€Ÿåº¦å‚æ•°
+void write_kt_motor_accel_param(KT_motor_t *motor, int32_t accel);
+
+//ç”µæœºé›¶ç‚¹
+void write_kt_motor_encoderOffset_param(KT_motor_t *motor, uint16_t encoderOffset);
+
+//è¾“å‡ºåŠŸç‡æ§åˆ¶
+void write_kt_motor_powerControl_param(KT_motor_t *motor, int16_t powerControl);
+
+//è½¬çŸ©é—­ç¯æ§åˆ¶
+void write_kt_motor_iqControl_param(KT_motor_t *motor, int16_t iqControl);
+
+//é€Ÿåº¦é—­ç¯æ§åˆ¶
+void write_kt_motor_speedControl_param(KT_motor_t *motor, int32_t speedControl);
+
+//å¤šåœˆé—­ç¯è§’åº¦æ§åˆ¶
+void write_kt_motor_angle_sum_Control_param(KT_motor_t    *motor, 
+																						int32_t       angle_sum_Control,
+	                                          uint16_t      angle_sum_Control_maxSpeed);
+
+//å•åœˆé—­ç¯è§’åº¦æ§åˆ¶
+void write_kt_motor_angle_single_Control_param(KT_motor_t   *motor, 
+																	 uint16_t     angle_single_Control,
+																	 uint8_t   	  angle_single_Control_spinDirection,
+																	 uint16_t			angle_single_Control_maxSpeed);
+
+//å¢é‡å¼è§’åº¦æ§åˆ¶
+void write_kt_motor_angle_add_Control_param(KT_motor_t   *motor, 
+																						int32_t      angle_add_Control,
+																			      uint16_t     angle_add_Control_maxSpeed);
+
+/* Exported functions --------------------------------------------------------*/
+
+void kt_enable(KT_motor_t *kt_motor)
+{
+	CAN_TxHeaderTypeDef CAN1_TxHeader1;
+	uint32_t TxMailBox0;
+	CAN1_TxHeader1.DLC=8;
+	CAN1_TxHeader1.ExtId=0;
+	CAN1_TxHeader1.IDE=CAN_ID_STD;
+	CAN1_TxHeader1.RTR=CAN_RTR_DATA;
+	CAN1_TxHeader1.StdId=kt_motor->KT_motor_info.id.tx_id; 
+	CAN1_TxHeader1.TransmitGlobalTime=DISABLE;
+	uint8_t data66[8]={0x88,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+	HAL_CAN_AddTxMessage(&hcan1,&CAN1_TxHeader1,data66,&TxMailBox0);
+}
+
+void canctrl_kt(KT_motor_t *kt_motor,int16_t current)
+{
+	CAN_TxHeaderTypeDef CAN1_TxHeader1;
+	uint32_t TxMailBox0;
+	CAN1_TxHeader1.DLC=8;
+	CAN1_TxHeader1.ExtId=0;
+	CAN1_TxHeader1.IDE=CAN_ID_STD;
+	CAN1_TxHeader1.RTR=CAN_RTR_DATA;
+	CAN1_TxHeader1.StdId=kt_motor->KT_motor_info.id.tx_id; 
+	CAN1_TxHeader1.TransmitGlobalTime=DISABLE;
+	uint8_t senddata[8]={0xA1,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+	int16_t curr=current;
+	
+	senddata[4] = *(uint8_t *)(&curr);
+	senddata[5] = *((uint8_t *)(&curr)+1);
+	
+	
+	HAL_CAN_AddTxMessage(&hcan1,&CAN1_TxHeader1,senddata,&TxMailBox0);
+}
+
+/**
+ *	@brief	ç”µæœºåˆå§‹åŒ–ï¼Œè´Ÿè´£ä¸€äº›å‚æ•°èµ‹å€¼ã€å‡½æ•°æŒ‡é’ˆèµ‹å€¼ã€æ¸…é›¶å‘é€æ•°ç»„ã€æ¸…é›¶å‘é€çš„ç»“æ„ä½“å‚æ•°
+ */
+void KT_motor_class_init(KT_motor_t *motor)
+{
+	
+	if(motor == NULL)
+		return;
+	
+	memset ( (uint8_t*)motor->tx_buff, 0, 8 );
+	memset ( &motor->KT_motor_info.tx_info, 0, 8);
+	
+	motor->KT_motor_info.state_info.init_flag         = M_INIT;
+	motor->KT_motor_info.state_info.offline_cnt_max   = OFFLINE_LINE_CNT_MAX;
+	motor->KT_motor_info.state_info.selfprotect_cnt_max   = SELFPROTECT_CNT_MAX;	
+	motor->KT_motor_info.state_info.offline_cnt      	 = 	0;
+	motor->KT_motor_info.state_info.selfprotect_cnt       = 0;
+	motor->KT_motor_info.state_info.work_state        = M_OFFLINE;	
+	motor->KT_motor_info.state_info.selfprotect_flag  = M_PROTECT_OFF;
+	
+
+	motor->heartbeat  = KT_motor_class_heartbeat;
+	
+	motor->get_info = get_kt_motor_info;
+	motor->tx_W_cmd = tx_kt_motor_W_command;
+	motor->tx_R_cmd = tx_kt_motor_R_command;
+	
+	motor->W_pid                  = write_kt_motor_pid_param;
+	motor->W_accel                = write_kt_motor_accel_param;
+	motor->W_encoderOffset        = write_kt_motor_encoderOffset_param;
+	motor->W_powerControl         = write_kt_motor_powerControl_param;
+	motor->W_iqControl            = write_kt_motor_iqControl_param;
+	motor->W_speedControl         = write_kt_motor_speedControl_param;
+	motor->W_angle_sum_Control    = write_kt_motor_angle_sum_Control_param;
+	motor->W_angle_single_Control = write_kt_motor_angle_single_Control_param;
+	motor->W_angle_add_Control    = write_kt_motor_angle_add_Control_param;
+	
+}
+
+/**
+ *	@brief	ç”µæœºå¿ƒè·³ï¼Œå¦‚æœå‘ç”Ÿå¤±è”ï¼Œä¸‹ä¸€æ¬¡æ”¶åˆ°æ•°æ®æ—¶ï¼Œoffline_cntä¼šåœ¨ç”µæœºæ›´æ–°ä¸­è¿›è¡Œæ¸…é›¶
+ */
+void KT_motor_class_heartbeat(KT_motor_t *motor)
+{	
+	static int16_t current_last;
+	if(motor == NULL)	
+		return;
+			
+	KT_motor_state_info_t *state_info = &motor->KT_motor_info.state_info;
+
+	if(state_info->init_flag == M_DEINIT)
+	{
+		state_info->work_state = M_INIT_ERR;
+		return;
+	}
+		
+	state_info->offline_cnt++;
+	//å‘è¿‡æ¥çš„ç”µæµä¸€ç›´ç›¸åŒåˆ¤æ–­ä¸ºè¿›å…¥ç”µæµä¿æŠ¤
+	if(motor->KT_motor_info.rx_info.current==current_last)
+	{
+		state_info->selfprotect_cnt++;
+	}
+	current_last=motor->KT_motor_info.rx_info.current;
+	
+	if(state_info->offline_cnt > state_info->offline_cnt_max) 
+	{
+		state_info->offline_cnt = state_info->offline_cnt_max;
+		state_info->work_state = M_OFFLINE;
+	}
+	else 
+	{
+		if(state_info->work_state == M_OFFLINE)
+			state_info->work_state = M_ONLINE;
+	}
+	
+	if(state_info->selfprotect_cnt > state_info->selfprotect_cnt_max) 
+	{
+		state_info->selfprotect_cnt = state_info->selfprotect_cnt_max;
+		state_info->selfprotect_flag = M_PROTECT_ON;
+	//	motor->tx_W_cmd(motor,MOTOR_RUN_ID);
+	}
+	else 
+	{
+		if(state_info->selfprotect_flag == M_PROTECT_ON)
+		{
+			state_info->selfprotect_flag = M_PROTECT_OFF;
+			state_info->selfprotect_cnt =0;
+		}
+			
+	}
+}
+
+
+/**
+ *	@brief	åˆå§‹åŒ–ç”µæœºçš„PIDå‘é€ã€æ¥æ”¶ç»“æ„ä½“
+ */
+void kt_motor_class_pid_init(KT_motor_t *motor)
+{
+	if(motor == NULL)	
+		return;
+
+	KT_motor_pid_t *pid = &motor->KT_motor_info.pid_info;
+	
+	pid->init_flag     = M_INIT;
+	
+	pid->rx.angleKp    = 0;
+	pid->rx.angleKi    = 0;
+	pid->rx.speedKp    = 0;
+	pid->rx.speedKi    = 0;
+	pid->rx.iqKp       = 0;
+	pid->rx.iqKi       = 0;
+
+	
+	pid->tx.angleKp    = 10;
+	pid->tx.angleKi    = 1;
+	pid->tx.speedKp    = 10;
+	pid->tx.speedKi    = 1;
+	pid->tx.iqKp       = 1;
+	pid->tx.iqKi       = 1;
+
+}	
+
+
+/*--------------------------å¤šç”µæœºå‘½ä»¤ä¸éœ€è¦å†æ•°ç»„ä¸­å¡«å…¥å‘½ä»¤-------------------------*/
+
+
+/** 
+ *	@brief å¤šç”µæœºæ§åˆ¶ï¼Œéœ€è¦åœ¨å¤–éƒ¨æŠŠæœ€å¤š4ä¸ªç”µæœºçš„æ‰­çŸ©ç”µæµæŒ‰ç…§IDå·çš„é¡ºåºç»„æˆä¸€ä¸ªæ•°ç»„
+					 å¦‚æœä¼ å…¥çš„ç”µæœºæ•°å°äº4ï¼Œä¼šè‡ªåŠ¨æ£€æŸ¥ä¼ å…¥çš„æ•°ç»„åéƒ¨åˆ†æ˜¯å¦æ˜¯0ï¼Œå¦‚æœä¸æ˜¯0ï¼Œä¼šè®¾ç½®ä¸º0
+ */
+void kt_motor_multi_control(int16_t* iqControl, char kt_motor_num, motor_drive_e drive_type)
+{
+	//åˆ¤æ–­ç”µæµ
+	for(int i = 0; i < kt_motor_num; i ++)
+	{
+		if( within_or_not(iqControl[i], -KT_TX_IQ_CONTROL_MAX, KT_TX_IQ_CONTROL_MAX) == Flase )
+			return;
+	}
+	
+	for(int i = kt_motor_num; i < 4 ; i ++)
+	{
+		if( iqControl[i] != 0 )
+			iqControl[i] = 0;
+	}
+	
+	uint8_t tx_buff[8] = {0};
+	
+	tx_buff[0] = (uint8_t) iqControl[0];
+	tx_buff[1] = (uint8_t) (iqControl[0] >> 8);
+	tx_buff[2] = (uint8_t) iqControl[1];
+	tx_buff[3] = (uint8_t) (iqControl[1] >> 8);
+	tx_buff[4] = (uint8_t) iqControl[2];
+	tx_buff[5] = (uint8_t) (iqControl[2] >> 8);
+	tx_buff[6] = (uint8_t) iqControl[3];
+	tx_buff[7] = (uint8_t) (iqControl[3] >> 8);
+	
+	if(drive_type == M_CAN1)
+	{
+		CAN_SendData(&hcan1, KT_MULTI_TX_ID, tx_buff);
+	}
+	else if(drive_type == M_CAN2)
+	{
+		CAN_SendData(&hcan2, KT_MULTI_TX_ID, tx_buff);
+	}
+	else
+		return;
+	
+}
+
+
+/*---------------------------ä»¥ä¸‹å‡½æ•°éƒ½æ˜¯é’ˆå¯¹å•ç”µæœºæ§åˆ¶----------------------------*/
+/** 
+ *	@brief ç»™ç”µæœºå‘é€æœ‰å…³  å†™å‚æ•°æˆ–è€…æƒ³è¦çš„æ§åˆ¶æ¨¡å¼çš„å‘½ä»¤ï¼Œå†…éƒ¨å·²ç»æœ‰cançš„å‘é€å‡½æ•°
+ */
+void tx_kt_motor_W_command(KT_motor_t *motor, uint8_t command)
+{
+	
+	if( motor == NULL )
+		return;
+	
+	KT_motor_pid_t       *pid      = &motor->KT_motor_info.pid_info;
+	
+	KT_motor_tx_info_t   *tx_info  = &motor->KT_motor_info.tx_info;
+	
+	memset( (uint8_t*)motor->tx_buff, 0, 8 );
+	
+	switch(command)
+	{
+		case PID_TX_RAM_ID:  //å†™PIDå‚æ•°åˆ°RAM
+			motor->tx_buff[0] = PID_TX_RAM_ID;
+			motor->tx_buff[1] = 0x00;
+		  motor->tx_buff[2] = pid->tx.angleKp;
+			motor->tx_buff[3] = pid->tx.angleKi;
+			motor->tx_buff[4] = pid->tx.speedKp;
+			motor->tx_buff[5] = pid->tx.speedKi;
+			motor->tx_buff[6] = pid->tx.iqKp;
+			motor->tx_buff[7] = pid->tx.iqKi;
+		break;
+		
+		case PID_TX_ROM_ID:  //å†™PIDå‚æ•°åˆ°ROM
+			motor->tx_buff[0] = PID_TX_RAM_ID;
+			motor->tx_buff[1] = 0x00;
+		  motor->tx_buff[2] = pid->tx.angleKp;
+			motor->tx_buff[3] = pid->tx.angleKi;
+			motor->tx_buff[4] = pid->tx.speedKp;
+			motor->tx_buff[5] = pid->tx.speedKi;
+			motor->tx_buff[6] = pid->tx.iqKp;
+			motor->tx_buff[7] = pid->tx.iqKi;
+		break;
+		
+		case ACCEL_TX_ID:  //å†™åŠ é€Ÿåº¦åˆ°RAM
+			motor->tx_buff[0] = ACCEL_TX_ID;
+			motor->tx_buff[1] = 0x00;
+		  motor->tx_buff[2] = 0x00;
+			motor->tx_buff[3] = 0x00;
+			motor->tx_buff[4] = (uint8_t) tx_info->accel;
+			motor->tx_buff[5] = (uint8_t) (tx_info->accel >> 8);
+			motor->tx_buff[6] = (uint8_t) (tx_info->accel >> 16);
+			motor->tx_buff[7] = (uint8_t) (tx_info->accel >> 24);
+		break;
+		
+		case ZERO_ENCODER_TX_ID:  //å†™ç¼–ç å™¨å€¼åˆ°ROMä½œä¸ºç”µæœºé›¶ç‚¹
+			motor->tx_buff[0] = ZERO_ENCODER_TX_ID;
+			motor->tx_buff[1] = 0x00;
+		  motor->tx_buff[2] = 0x00;
+			motor->tx_buff[3] = 0x00;
+			motor->tx_buff[4] = 0x00;
+			motor->tx_buff[5] = 0x00;
+			motor->tx_buff[6] = (uint8_t) tx_info->encoderOffset;
+			motor->tx_buff[7] = (uint8_t) (tx_info->encoderOffset >> 8);
+		break;
+		
+		case ZERO_POSNOW_TX_ID:  //å†™å½“å‰ä½ç½®å€¼åˆ°ROMä½œä¸ºç”µæœºé›¶ç‚¹ï¼Œå‡å°‘ä½¿ç”¨
+			motor->tx_buff[0] = ZERO_POSNOW_TX_ID;
+			motor->tx_buff[1] = 0x00;
+		  motor->tx_buff[2] = 0x00;
+			motor->tx_buff[3] = 0x00;
+			motor->tx_buff[4] = 0x00;
+			motor->tx_buff[5] = 0x00;
+			motor->tx_buff[6] = (uint8_t) tx_info->encoderOffset;
+			motor->tx_buff[7] = (uint8_t) (tx_info->encoderOffset >> 8);
+		break;
+		
+		case MOTOR_CLOSE_ID:     //ç”µæœºå…³é—­å‘½ä»¤ï¼Œæ¸…é™¤è¿è¡ŒçŠ¶æ€å’Œä¹‹å‰æ”¶åˆ°çš„æŒ‡ä»¤
+			motor->tx_buff[0] = MOTOR_CLOSE_ID;
+		break;
+		
+		case MOTOR_STOP_ID:     //ç”µæœºåœæ­¢å‘½ä»¤ï¼Œæ¸…é™¤è¿è¡ŒçŠ¶æ€å’Œä¹‹å‰æ”¶åˆ°çš„æŒ‡ä»¤
+			motor->tx_buff[0] = MOTOR_STOP_ID;
+		break;
+		
+		case MOTOR_RUN_ID:      //ç”µæœºè¿è¡Œï¼Œä»åœæ­¢ä¸­æ¢å¤
+			motor->tx_buff[0] = MOTOR_RUN_ID;
+		break;
+		
+		case TORQUE_OPEN_LOOP_ID:  //å¼€ç¯è½¬çŸ©æ§åˆ¶ï¼Œæ§åˆ¶è¾“å‡ºåŠŸç‡
+			motor->tx_buff[0] = TORQUE_OPEN_LOOP_ID;
+			motor->tx_buff[1] = 0x00;
+		  motor->tx_buff[2] = 0x00;
+			motor->tx_buff[3] = 0x00;
+			motor->tx_buff[4] = (uint8_t) tx_info->powerControl;
+			motor->tx_buff[5] = (uint8_t) (tx_info->powerControl >> 8);
+			motor->tx_buff[6] = 0x00;
+			motor->tx_buff[7] = 0x00;
+		break;
+		
+		case TORQUE_CLOSE_LOOP_ID:  //é—­ç¯è½¬çŸ©æ§åˆ¶ï¼Œæ§åˆ¶æ‰­çŸ©ç”µæµ
+			motor->tx_buff[0] = TORQUE_CLOSE_LOOP_ID;
+			motor->tx_buff[1] = 0x00;
+		  motor->tx_buff[2] = 0x00;
+			motor->tx_buff[3] = 0x00;
+			motor->tx_buff[4] = *(uint8_t*) (&tx_info->iqControl);
+			motor->tx_buff[5] = *((uint8_t*)(&tx_info->iqControl)+1);
+			motor->tx_buff[6] = 0x00;
+			motor->tx_buff[7] = 0x00;
+		break;
+		
+		case SPEED_CLOSE_LOOP_ID:    //é€Ÿåº¦é—­ç¯æ§åˆ¶
+			motor->tx_buff[0] = SPEED_CLOSE_LOOP_ID;
+			motor->tx_buff[1] = 0x00;
+		  motor->tx_buff[2] = 0x00;
+			motor->tx_buff[3] = 0x00;
+			motor->tx_buff[4] = (uint8_t) tx_info->speedControl;
+			motor->tx_buff[5] = (uint8_t) (tx_info->speedControl >> 8);
+			motor->tx_buff[6] = (uint8_t) (tx_info->speedControl >> 16);
+			motor->tx_buff[7] = (uint8_t) (tx_info->speedControl >> 24);
+		break;
+		
+		case POSI_CLOSE_LOOP_ID1:    //è§’åº¦æ€»å’Œé—­ç¯ï¼Œé€Ÿåº¦ä¸é™åˆ¶
+			motor->tx_buff[0] = POSI_CLOSE_LOOP_ID1;
+			motor->tx_buff[1] = 0x00;
+		  motor->tx_buff[2] = 0x00;
+			motor->tx_buff[3] = 0x00;
+			motor->tx_buff[4] = (uint8_t) tx_info->angle_sum_Control;
+			motor->tx_buff[5] = (uint8_t) (tx_info->angle_sum_Control >> 8);
+			motor->tx_buff[6] = (uint8_t) (tx_info->angle_sum_Control >> 16);
+			motor->tx_buff[7] = (uint8_t) (tx_info->angle_sum_Control >> 24);
+		break;
+		
+		case POSI_CLOSE_LOOP_ID2:    //è§’åº¦æ€»å’Œé—­ç¯ï¼Œé€Ÿåº¦é™åˆ¶
+			motor->tx_buff[0] = POSI_CLOSE_LOOP_ID2;
+			motor->tx_buff[1] = 0x00;
+		  motor->tx_buff[2] = (uint8_t) tx_info->angle_sum_Control_maxSpeed;
+			motor->tx_buff[3] = (uint8_t) (tx_info->angle_sum_Control_maxSpeed >> 8);
+			motor->tx_buff[4] = (uint8_t) tx_info->angle_sum_Control;
+			motor->tx_buff[5] = (uint8_t) (tx_info->angle_sum_Control >> 8);
+			motor->tx_buff[6] = (uint8_t) (tx_info->angle_sum_Control >> 16);
+			motor->tx_buff[7] = (uint8_t) (tx_info->angle_sum_Control >> 24);
+		break;
+		
+		case POSI_CLOSE_LOOP_ID3:    //å•åœˆè§’åº¦ï¼Œæœ‰æ–¹å‘
+			motor->tx_buff[0] = POSI_CLOSE_LOOP_ID3;
+			motor->tx_buff[1] = (uint8_t) tx_info->angle_single_Control_spinDirection;
+		  motor->tx_buff[2] = 0x00;
+			motor->tx_buff[3] = 0x00;
+			motor->tx_buff[4] = (uint8_t) tx_info->angle_single_Control;
+			motor->tx_buff[5] = (uint8_t) (tx_info->angle_single_Control >> 8);
+			motor->tx_buff[6] = 0x00;
+			motor->tx_buff[7] = 0x00;
+		break;
+		
+		case POSI_CLOSE_LOOP_ID4:    //å•åœˆè§’åº¦ï¼Œæœ‰æ–¹å‘ï¼Œæœ‰æœ€é«˜è½¬é€Ÿ
+			motor->tx_buff[0] = POSI_CLOSE_LOOP_ID4;
+			motor->tx_buff[1] = (uint8_t) tx_info->angle_single_Control_spinDirection;
+		  motor->tx_buff[2] = (uint8_t) tx_info->angle_single_Control_maxSpeed;
+			motor->tx_buff[3] = (uint8_t) (tx_info->angle_single_Control_maxSpeed >> 8);
+			motor->tx_buff[4] = (uint8_t) tx_info->angle_single_Control;
+			motor->tx_buff[5] = (uint8_t) (tx_info->angle_single_Control >> 8);
+			motor->tx_buff[6] = 0x00;
+			motor->tx_buff[7] = 0x00;
+		break;
+		
+		case POSI_CLOSE_LOOP_ID5:    //è§’åº¦å¢é‡ï¼Œæ— é€Ÿåº¦é™åˆ¶
+			motor->tx_buff[0] = POSI_CLOSE_LOOP_ID5;
+			motor->tx_buff[1] = 0x00;
+		  motor->tx_buff[2] = 0x00;
+			motor->tx_buff[3] = 0x00;
+			motor->tx_buff[4] = (uint8_t) tx_info->angle_add_Control;
+			motor->tx_buff[5] = (uint8_t) (tx_info->angle_add_Control >> 8);
+			motor->tx_buff[6] = (uint8_t) (tx_info->angle_add_Control >> 16);
+			motor->tx_buff[7] = (uint8_t) (tx_info->angle_add_Control >> 24);
+		break;
+				
+		case POSI_CLOSE_LOOP_ID6:    //è§’åº¦å¢é‡ï¼Œæœ‰é€Ÿåº¦é™åˆ¶
+			motor->tx_buff[0] = POSI_CLOSE_LOOP_ID6;
+			motor->tx_buff[1] = 0x00;
+		  motor->tx_buff[2] = (uint8_t) tx_info->angle_add_Control_maxSpeed;
+			motor->tx_buff[3] = (uint8_t) (tx_info->angle_add_Control_maxSpeed >> 8);
+			motor->tx_buff[4] = (uint8_t) tx_info->angle_add_Control;
+			motor->tx_buff[5] = (uint8_t) (tx_info->angle_add_Control >> 8);
+			motor->tx_buff[6] = (uint8_t) (tx_info->angle_add_Control >> 16);
+			motor->tx_buff[7] = (uint8_t) (tx_info->angle_add_Control >> 24);
+		break;
+		
+		
+		default:
+			break;
+	}
+	
+	if(motor->KT_motor_info.id.drive_type == M_CAN1)
+	{
+		CAN_SendData(&hcan1, motor->KT_motor_info.id.tx_id, motor->tx_buff);
+	}
+	else if(motor->KT_motor_info.id.drive_type == M_CAN2)
+	{
+		CAN_SendData(&hcan2, motor->KT_motor_info.id.tx_id, motor->tx_buff);
+	}
+	else
+		return;
+}
+	
+
+
+
+/** 
+ *	@brief ç»™ç”µæœºå‘é€ä¸»åŠ¨è¯»å–æŸäº›å‚æ•°çš„å‘½ä»¤ï¼Œå†…éƒ¨å·²ç»æœ‰cançš„å‘é€å‡½æ•°
+ */
+void tx_kt_motor_R_command(KT_motor_t *motor, uint8_t command)
+{
+	if( motor == NULL )
+		return;
+	
+	memset( (uint8_t*)motor->tx_buff, 0, 8 );
+	
+	switch(command)
+	{
+		case PID_RX_ID:   	//è¯»å–å‘é€PIDç»“æ„ä½“å‚æ•°
+			motor->tx_buff[0] = PID_RX_ID;
+		break;
+		
+		case ACCEL_RX_ID:   //è¯»å–å‘é€çš„ç»“æ„ä½“ä¸­çš„åŠ é€Ÿåº¦å‚æ•°
+			motor->tx_buff[0] = ACCEL_RX_ID;
+		break;
+		
+		case ENCODER_RX_ID:   //è¯»å–å‘é€ç»“æ„ä½“ä¸­çš„ç¼–ç å™¨æ•°æ®
+			motor->tx_buff[0] = ENCODER_RX_ID;
+		break;
+		
+		case MOTOR_ANGLE_ID:  //è¯»å–ç”µæœºå¤šåœˆç»å¯¹è§’åº¦
+		 motor->tx_buff[0] = MOTOR_ANGLE_ID;
+		break;
+		
+		case CIRCLE_ANGLE_ID:  //è¯»å–ç”µæœºå•åœˆè§’åº¦
+			motor->tx_buff[0] = CIRCLE_ANGLE_ID;
+		break;
+		
+		case STATE1_ID:        //è¯»å–ç”µæœºçŠ¶æ€1å’Œé”™è¯¯æ ‡å¿—ä½
+			motor->tx_buff[0] = STATE1_ID;
+		break;
+		
+		case STATE2_ID:        //è¯»å–ç”µæœºçŠ¶æ€2
+			motor->tx_buff[0] = STATE2_ID;
+		break;
+		
+		case STATE3_ID:        //è¯»å–ç”µæœºçŠ¶æ€3
+			motor->tx_buff[0] = STATE3_ID;
+		break;
+		
+		default:
+			break;
+	}
+	
+	if(motor->KT_motor_info.id.drive_type == M_CAN1)
+	{
+		CAN_SendData(&hcan1, motor->KT_motor_info.id.tx_id, motor->tx_buff);
+	}
+	else if(motor->KT_motor_info.id.drive_type == M_CAN2)
+	{
+		CAN_SendData(&hcan2, motor->KT_motor_info.id.tx_id, motor->tx_buff);
+	}
+	else
+		return;
+}
+
+
+
+/**
+ *	@brief	æ¥æ”¶ç”µæœºå‘æ¥çš„ä¿¡æ¯å¹¶è‡ªåŠ¨æ›´æ–°ï¼Œéœ€è¦æ³¨æ„ï¼Œå¤§éƒ¨åˆ†å‘é€ç»™ç”µæœºçš„æŒ‡ä»¤ï¼Œç”µæœºä¹Ÿä¼šè¿”å›ä¸€äº›æ•°æ®
+						å¦‚æœä¼ å…¥ç©ºæŒ‡é’ˆï¼Œè®¤ä¸ºç”µæœºæ•°æ®å‡ºé”™ï¼Œå¹¶è¿”å›
+						æœ€åé¢ä¼šæ ¹æ®æ¥æ”¶ç»“æ„ä½“çš„errorStateåˆ¤æ–­æ˜¯å¦è¦è‡ªæˆ‘ä¿æŠ¤
+ *  @return
+ */
+void get_kt_motor_info(KT_motor_t *motor, uint8_t *rxBuf)
+{
+	if( motor == NULL || rxBuf == NULL )
+	{
+		motor->KT_motor_info.state_info.work_state = M_DATA_ERR;
+		return;
+	}	
+	
+	uint8_t ID = rxBuf[0];
+	
+	KT_motor_pid_rx_info_t *pid_rx_info = &motor->KT_motor_info.pid_info.rx;
+	KT_motor_rx_info_t     *rx_info     = &motor->KT_motor_info.rx_info;
+	KT_motor_state_info_t  *state_info  = &motor->KT_motor_info.state_info;
+	
+	state_info->offline_cnt = 0;
+	state_info->work_state = M_ONLINE;
+	
+	switch (ID)
+	{
+		case PID_RX_ID:                      //ä¸»åŠ¨è¯»å–PID
+			pid_rx_info->angleKp = rxBuf[2];
+			pid_rx_info->angleKi = rxBuf[3];
+			pid_rx_info->speedKp = rxBuf[4];
+			pid_rx_info->speedKi = rxBuf[5];
+			pid_rx_info->iqKp	   = rxBuf[6];
+			pid_rx_info->iqKi	   = rxBuf[7];
+		break;
+		
+		case PID_TX_RAM_ID:                  //å‘é€PIDå‚æ•°åˆ°RAMæ—¶ä¼šè¿”å›
+			pid_rx_info->angleKp = rxBuf[2];
+			pid_rx_info->angleKi = rxBuf[3];
+			pid_rx_info->speedKp = rxBuf[4];
+			pid_rx_info->speedKi = rxBuf[5];
+			pid_rx_info->iqKp	   = rxBuf[6];
+			pid_rx_info->iqKi	   = rxBuf[7];
+		break;
+		
+		case PID_TX_ROM_ID:                  //å‘é€PIDå‚æ•°åˆ°ROMæ—¶ä¼šè¿”å›
+			pid_rx_info->angleKp = rxBuf[2];
+			pid_rx_info->angleKi = rxBuf[3];
+			pid_rx_info->speedKp = rxBuf[4];
+			pid_rx_info->speedKi = rxBuf[5];
+			pid_rx_info->iqKp	   = rxBuf[6];
+			pid_rx_info->iqKi	   = rxBuf[7];
+		break;
+		
+		case ACCEL_RX_ID:                    //ä¸»åŠ¨è¯»å–åŠ é€Ÿåº¦
+			rx_info->accel  = (int32_t)rxBuf[7];
+			rx_info->accel <<= 8;
+			rx_info->accel |= (int32_t)rxBuf[6];
+			rx_info->accel <<= 8;
+			rx_info->accel |= (int32_t)rxBuf[5];
+			rx_info->accel <<= 8;
+			rx_info->accel |= (int32_t)rxBuf[4];
+			rx_info->accel <<= 8;
+		break;
+		
+		case ACCEL_TX_ID:                    //å‘é€åŠ é€Ÿåº¦å‚æ•°åˆ°RAMä¼šè¿”å›
+			rx_info->accel  = (int32_t)rxBuf[7];
+			rx_info->accel <<= 8;
+			rx_info->accel |= (int32_t)rxBuf[6];
+			rx_info->accel <<= 8;
+			rx_info->accel |= (int32_t)rxBuf[5];
+			rx_info->accel <<= 8;
+			rx_info->accel |= (int32_t)rxBuf[4];
+			rx_info->accel <<= 8;
+		break;	
+		
+		case ENCODER_RX_ID:                   //ä¸»åŠ¨è¯»å–ç¼–ç å™¨
+			rx_info->encoder = (uint16_t)rxBuf[3];
+			rx_info->encoder <<= 8;
+			rx_info->encoder |= (uint16_t)rxBuf[2];
+			rx_info->encoderRaw = (uint16_t)rxBuf[5];
+			rx_info->encoderRaw <<= 8;
+			rx_info->encoderRaw |= (uint16_t)rxBuf[4];
+			rx_info->encoderOffset = (uint16_t)rxBuf[7];
+			rx_info->encoderOffset <<= 8;
+			rx_info->encoderOffset |= (uint16_t)rxBuf[6];
+		break;
+		
+		case ZERO_ENCODER_TX_ID:              //å†™å…¥ç¼–ç å™¨å€¼åˆ°ROMä½œä¸ºç”µæœºé›¶ç‚¹ä¼šè¿”å›
+			rx_info->encoderOffset = (uint16_t)rxBuf[7];
+			rx_info->encoderOffset <<= 8;
+			rx_info->encoderOffset |= (uint16_t)rxBuf[6];
+		break;
+		
+		case ZERO_POSNOW_TX_ID:              //å†™å…¥ç¼–ç å™¨å€¼åˆ°RAMä½œä¸ºç”µæœºé›¶ç‚¹ä¼šè¿”å›
+			rx_info->encoderOffset = (uint16_t)rxBuf[7];
+			rx_info->encoderOffset <<= 8;
+			rx_info->encoderOffset |= (uint16_t)rxBuf[6];
+		break;
+		
+		
+		case MOTOR_ANGLE_ID:                  //ä¸»åŠ¨è¯»å–ç”µæœºå¤šåœˆç»å¯¹è§’åº¦ï¼Œæ­£å€¼é¡ºæ—¶é’ˆç´¯è®¡è§’åº¦
+			rx_info->motorAngle  = (int64_t)rxBuf[7];
+			rx_info->motorAngle <<= 8;
+			rx_info->motorAngle |= (int64_t)rxBuf[6];
+			rx_info->motorAngle <<= 8;
+			rx_info->motorAngle |= (int64_t)rxBuf[5];
+			rx_info->motorAngle <<= 8;
+			rx_info->motorAngle |= (int64_t)rxBuf[4];
+			rx_info->motorAngle <<= 8;
+			rx_info->motorAngle |= (int64_t)rxBuf[3];
+			rx_info->motorAngle <<= 8;
+			rx_info->motorAngle |= (int64_t)rxBuf[2];
+			rx_info->motorAngle <<= 8;
+			rx_info->motorAngle |= (int64_t)rxBuf[1];
+		break;
+		
+		case CIRCLE_ANGLE_ID:                 //ä¸»åŠ¨è¯»å–ç”µæœºå•åœˆè§’åº¦
+			rx_info->circleAngle  = (uint32_t)rxBuf[7];
+			rx_info->circleAngle <<= 8;
+			rx_info->circleAngle |= (uint32_t)rxBuf[6];
+			rx_info->circleAngle <<= 8;
+			rx_info->circleAngle |= (uint32_t)rxBuf[5];
+			rx_info->circleAngle <<= 8;
+			rx_info->circleAngle |= (uint32_t)rxBuf[4];
+		break;
+		
+		case STATE1_ID:                       //ä¸»åŠ¨è¯»å–ç”µæœºçŠ¶æ€1å’Œé”™è¯¯æ ‡å¿—ä½
+			rx_info->temperature = (int8_t)rxBuf[1]; 
+			rx_info->voltage = (uint16_t)rxBuf[4];
+			rx_info->voltage <<= 8;
+			rx_info->voltage |= (uint16_t)rxBuf[3];
+			rx_info->errorState = rxBuf[7];
+		break;
+		
+		case STATE2_ID:                       //ä¸»åŠ¨è¯»å–ç”µæœºçŠ¶æ€2
+			rx_info->temperature = (int8_t)rxBuf[1];
+			rx_info->current = (int16_t)rxBuf[3];
+			rx_info->current <<= 8;
+			rx_info->current |= (int16_t)rxBuf[2];
+			rx_info->speed = (int16_t)rxBuf[5];
+			rx_info->speed <<= 8;
+			rx_info->speed |= (int16_t)rxBuf[4];
+			rx_info->encoder = (uint16_t)rxBuf[7];
+			rx_info->encoder <<= 8;
+			rx_info->encoder |= (uint16_t)rxBuf[6];
+		break;
+		
+		case STATE3_ID:                        //ä¸»åŠ¨è¯»å–ç”µæœºçŠ¶æ€3
+			rx_info->temperature = (int8_t)rxBuf[1];
+			rx_info->current_A = (int16_t)rxBuf[3];
+			rx_info->current_A <<= 8;
+			rx_info->current_A |= (int16_t)rxBuf[2];
+			rx_info->current_B = (int16_t)rxBuf[5];
+			rx_info->current_B <<= 8;
+			rx_info->current_B |= (int16_t)rxBuf[4];
+			rx_info->current_C = (int16_t)rxBuf[7];
+			rx_info->current_C <<= 8;
+			rx_info->current_C |= (int16_t)rxBuf[6];
+		break;
+		
+		case TORQUE_OPEN_LOOP_ID:              //æ‰­çŸ©å¼€ç¯æ§åˆ¶ä¼šè‡ªåŠ¨è¿”å›
+			rx_info->temperature = (int8_t)rxBuf[1]; 
+			rx_info->powerControl = (int16_t)rxBuf[3];
+			rx_info->powerControl <<= 8;	
+			rx_info->powerControl |= (int16_t)rxBuf[2];
+			rx_info->speed = (int16_t)rxBuf[5];
+			rx_info->speed <<= 8;
+			rx_info->speed |= (int16_t)rxBuf[4];
+			rx_info->encoder = (uint16_t)rxBuf[7];
+			rx_info->encoder <<= 8;
+			rx_info->encoder |= (uint16_t)rxBuf[6];
+		break;
+		
+		case  TORQUE_CLOSE_LOOP_ID:	//æ‰­çŸ©é—­ç¯æ§åˆ¶ã€é€Ÿåº¦é—­ç¯ã€æ‰€æœ‰ä½ç½®é—­ç¯éƒ½ä¼šè¿”å›
+		case  SPEED_CLOSE_LOOP_ID :
+		case  POSI_CLOSE_LOOP_ID1 :
+		case  POSI_CLOSE_LOOP_ID2 :
+		case  POSI_CLOSE_LOOP_ID3 :
+		case  POSI_CLOSE_LOOP_ID4 :	
+		case  POSI_CLOSE_LOOP_ID5 :
+		case  POSI_CLOSE_LOOP_ID6 :
+			rx_info->temperature = (int8_t)rxBuf[1]; 
+			rx_info->current = (int16_t)rxBuf[3];
+			rx_info->current <<= 8;	
+			rx_info->current |= (int16_t)rxBuf[2];
+			rx_info->speed = (int16_t)rxBuf[5];
+			rx_info->speed <<= 8;
+			rx_info->speed |= (int16_t)rxBuf[4];
+			rx_info->encoder = (uint16_t)rxBuf[7];
+			rx_info->encoder <<= 8;
+			rx_info->encoder |= (uint16_t)rxBuf[6];
+		break;
+		
+		
+		default:
+			break;
+	}
+
+	
+}
+
+/**
+ *	@briefå†™ç”µæœºçš„å‘é€PIDç»“æ„ä½“å‚æ•°ï¼Œæ•´å‹æ•°ç»„ç»“æ„{angleKpï¼ŒangleKiï¼ŒspeedKpï¼ŒspeedKiï¼ŒiqKpï¼ŒiqKiï¼Œ0ï¼Œ0}
+ */
+void write_kt_motor_pid_param(KT_motor_t *motor, uint8_t* buff)
+{
+	if(motor == NULL || buff == NULL)
+		return;
+	
+	KT_motor_pid_t *pid = &motor->KT_motor_info.pid_info;
+	
+	pid->tx.angleKp    = buff[0];
+	pid->tx.angleKi    = buff[1];
+	pid->tx.speedKp    = buff[2];
+	pid->tx.speedKi    = buff[3];
+	pid->tx.iqKp       = buff[4];
+	pid->tx.iqKi       = buff[5];
+}
+
+
+/**
+ *	@briefå†™ç”µæœºçš„å‘é€ç»“æ„ä½“çš„åŠ é€Ÿåº¦å‚æ•°
+ */
+
+void write_kt_motor_accel_param(KT_motor_t *motor, int32_t accel)
+{
+	if(motor == NULL)
+		return;
+	
+	motor->KT_motor_info.tx_info.accel = accel;
+}
+
+
+/** 
+ *	@brief å†™ç”µæœºçš„å‘é€ç»“æ„ä½“çš„ç”µæœºé›¶ç‚¹å‚æ•°
+ */
+
+void write_kt_motor_encoderOffset_param(KT_motor_t *motor, uint16_t encoderOffset)
+{
+	if(motor == NULL)
+		return;
+	
+	//æ— ç¬¦å·æ•°æ®è°ƒç”¨within_or_notä¼šæŠ¥è­¦å‘Š
+	if( encoderOffset > KT_TX_ENCODER_OFFSET_MAX )
+	  return;
+	
+	motor->KT_motor_info.tx_info.encoderOffset = encoderOffset;
+}
+
+/** 
+ *	@brief å†™ç”µæœºçš„å‘é€ç»“æ„ä½“çš„è¾“å‡ºåŠŸç‡æ§åˆ¶ç›®æ ‡å‚æ•°
+ */
+
+
+void write_kt_motor_powerControl_param(KT_motor_t *motor, int16_t powerControl)
+{
+	if(motor == NULL)
+		return;
+	
+	if( within_or_not(powerControl, -KT_TX_POWER_CONTROL_MAX, KT_TX_POWER_CONTROL_MAX) == Flase )
+	  return;
+	
+	motor->KT_motor_info.tx_info.powerControl = powerControl;
+}
+
+/** 
+ *	@brief å†™ç”µæœºçš„å‘é€ç»“æ„ä½“çš„æ‰­çŸ©ç”µæµæ§åˆ¶ç›®æ ‡å‚æ•°
+ */
+
+
+void write_kt_motor_iqControl_param(KT_motor_t *motor, int16_t iqControl)
+{
+	if(motor == NULL)
+		return;
+	
+	iqControl = constrain(iqControl, -KT_TX_IQ_CONTROL_MAX, KT_TX_IQ_CONTROL_MAX);
+	
+	motor->KT_motor_info.tx_info.iqControl = iqControl;
+}
+
+
+/** 
+ *	@brief å†™ç”µæœºçš„å‘é€ç»“æ„ä½“çš„é€Ÿåº¦æ§åˆ¶ç›®æ ‡å‚æ•°
+ */
+
+void write_kt_motor_speedControl_param(KT_motor_t *motor, int32_t speedControl)
+{
+	if(motor == NULL)
+		return;
+		
+	motor->KT_motor_info.tx_info.speedControl = speedControl;
+}
+
+/** 
+ *	@brief å†™ç”µæœºçš„å‘é€ç»“æ„ä½“çš„å¤šåœˆè§’åº¦æ§åˆ¶æ¶‰åŠåˆ°çš„å‚æ•°
+ */
+
+
+void write_kt_motor_angle_sum_Control_param(KT_motor_t    *motor, 
+																						int32_t       angle_sum_Control,
+	                                          uint16_t      angle_sum_Control_maxSpeed)
+{
+	if(motor == NULL)
+		return;
+		
+	motor->KT_motor_info.tx_info.angle_sum_Control = angle_sum_Control;
+	
+	motor->KT_motor_info.tx_info.angle_sum_Control_maxSpeed = angle_sum_Control_maxSpeed;
+}
+
+
+/** 
+ *	@brief å†™ç”µæœºçš„å‘é€ç»“æ„ä½“çš„å•åœˆè§’åº¦æ§åˆ¶æ¶‰åŠåˆ°çš„å‚æ•°
+ */
+
+void write_kt_motor_angle_single_Control_param(KT_motor_t   *motor, 
+											 uint16_t     angle_single_Control,
+											 uint8_t   	  angle_single_Control_spinDirection,
+										     uint16_t			angle_single_Control_maxSpeed)
+{
+//	if(motor == NULL)
+//		return;
+//	
+//	//æ— ç¬¦å·è°ƒç”¨within_or_notä¼šæŠ¥è­¦å‘Š
+//	if( angle_single_Control > KT_TX_ANGLE_SIGNLE_MAX )
+//		return;
+//	
+//	if( angle_single_Control_spinDirection != CLOCK_WISE ||
+//	   	angle_single_Control_spinDirection != N_CLOCK_WISE )
+//		return;
+	
+	
+	motor->KT_motor_info.tx_info.angle_single_Control = angle_single_Control;
+	
+	motor->KT_motor_info.tx_info.angle_single_Control_spinDirection = angle_single_Control_spinDirection;
+	
+	motor->KT_motor_info.tx_info.angle_single_Control_maxSpeed = angle_single_Control_maxSpeed;
+}
+
+/** 
+ *	@brief å†™ç”µæœºçš„å‘é€ç»“æ„ä½“çš„è§’åº¦å¢é‡æ§åˆ¶æ¶‰åŠåˆ°çš„å‚æ•°
+ */
+
+void write_kt_motor_angle_add_Control_param(KT_motor_t   *motor, 
+																						int32_t      angle_add_Control,
+																			      uint16_t     angle_add_Control_maxSpeed)
+{
+	if(motor == NULL)
+		return;
+	
+	motor->KT_motor_info.tx_info.angle_add_Control = angle_add_Control;
+	
+	motor->KT_motor_info.tx_info.angle_add_Control_maxSpeed = angle_add_Control_maxSpeed;
+	
+}
+
+
