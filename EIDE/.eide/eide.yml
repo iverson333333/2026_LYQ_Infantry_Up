@@ -268,6 +268,8 @@ targets:
         - ../MDK-ARM/RTE/_My_C
       libList: []
     excludeList: []
+    settings:
+      debugger: cortex-debug
     toolchain: AC6
     toolchainConfigMap:
       AC6:
