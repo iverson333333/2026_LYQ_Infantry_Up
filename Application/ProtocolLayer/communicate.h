@@ -5,7 +5,6 @@
 #include "drv_can.h"
 #include "can_protocol.h"
 #include "vision_protocol.h"
-#include "shoot.h"
 #include "judge_protocol.h"
 #include "gimbal.h"
 #include "rp_math.h"

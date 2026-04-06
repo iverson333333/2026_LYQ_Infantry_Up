@@ -9,7 +9,6 @@
 
 #include "communicate.h"
 #include "gimbal.h"
-#include "shoot.h"
 
 /* 仅保留结构体声明，实际控制逻辑在下主控 */
 typedef enum {

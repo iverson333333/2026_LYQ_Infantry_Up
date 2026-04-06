@@ -6,7 +6,7 @@
 
 Board_Tx_Info_t Board_Tx_Info;
 Board_Rx_Info_t Board_Rx_Info;
-Board_HeartBeat_t Board_HeartBeat = {.offline_cnt_pack_1 = 0, .offline_cnt_pack_2 = 0, .offline_cnt_max = 50};
+Board_HeartBeat_t Board_HeartBeat = {.offline_cnt_pack_1 = 0, .offline_cnt_pack_2 = 0, .offline_cnt_max = 100};
 
 extern CAN_HandleTypeDef hcan2;
 
