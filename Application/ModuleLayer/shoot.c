@@ -196,10 +196,10 @@ static void Fric_Extern_Update(fric_t *fric)
     fric->info.R_speed = fric->R_motor->rx_info->encoder_speed;
 
     // 更新左摩擦轮电流
-    fric->info.L_current = (int16_t)fric->L_motor->rx_info->torque_current;
+    fric->info.L_current = fric->L_motor->rx_info->torque_current_raw;
 
     // 更新右摩擦轮电流
-    fric->info.R_current = (int16_t)fric->R_motor->rx_info->torque_current;
+    fric->info.R_current = fric->R_motor->rx_info->torque_current_raw;
 }
 
 /**
@@ -254,40 +254,26 @@ static void Fric_Speed_Pid(fric_t *fric)
 
     // 左摩擦轮PID计算
     {
-        pid_ctrl_t *speed_ctrl = fric->L_motor->ctrl->speed_ctrl;
-        pid_ctrl_t *pid_cfg = &fric->cfg.L_pid;
+        pid_ctrl_t *L_pid = &fric->cfg.L_pid;
+        int16_t L_target = fric->cfg.dir.L_direction ? target : -target;
+        L_pid->target = (float)L_target;
+        L_pid->measure = fric->L_motor->rx_info->encoder_speed;
 
-        speed_ctrl->kp = pid_cfg->kp;
-        speed_ctrl->ki = pid_cfg->ki;
-        speed_ctrl->kd = pid_cfg->kd;
-        speed_ctrl->integral_max = pid_cfg->integral_max;
-        speed_ctrl->out_max = pid_cfg->out_max;
-
-        speed_ctrl->target = (float)target;
-        speed_ctrl->measure = fric->L_motor->rx_info->encoder_speed;
-
-        pid_err_cal(speed_ctrl);
-        single_pid_ctrl(speed_ctrl);
+        pid_err_cal(L_pid);
+        single_pid_ctrl(L_pid);
     }
 
     // 右摩擦轮PID计算
     {
-        pid_ctrl_t *speed_ctrl = fric->R_motor->ctrl->speed_ctrl;
-        pid_ctrl_t *pid_cfg = &fric->cfg.R_pid;
-
-        speed_ctrl->kp = pid_cfg->kp;
-        speed_ctrl->ki = pid_cfg->ki;
-        speed_ctrl->kd = pid_cfg->kd;
-        speed_ctrl->integral_max = pid_cfg->integral_max;
-        speed_ctrl->out_max = pid_cfg->out_max;
+        pid_ctrl_t *R_pid = &fric->cfg.R_pid;
 
         // 根据方向标志位决定目标值
         int16_t R_target = fric->cfg.dir.R_direction ? target : -target;
-        speed_ctrl->target = (float)R_target;
-        speed_ctrl->measure = fric->R_motor->rx_info->encoder_speed;
+        R_pid->target = (float)R_target;
+        R_pid->measure = fric->R_motor->rx_info->encoder_speed;
 
-        pid_err_cal(speed_ctrl);
-        single_pid_ctrl(speed_ctrl);
+        pid_err_cal(R_pid);
+        single_pid_ctrl(R_pid);
     }
 }
 
@@ -297,13 +283,15 @@ static void Fric_Speed_Pid(fric_t *fric)
  */
 static void Fric_Output_Local(fric_t *fric)
 {
-    // 输出到电机
-    fric->L_motor->tx_info->torque = (int16_t)fric->L_motor->ctrl->speed_ctrl->out;
-    fric->R_motor->tx_info->torque = (int16_t)fric->R_motor->ctrl->speed_ctrl->out;
-
     // 保存到输出结构体便于外部监控
-    fric->output.L_output = (int16_t)fric->L_motor->tx_info->torque;
-    fric->output.R_output = (int16_t)fric->R_motor->tx_info->torque;
+    fric->output.L_output = (int16_t)fric->cfg.L_pid.out;
+    fric->output.R_output = (int16_t)fric->cfg.R_pid.out;
+
+    // 输出到电机
+    fric->L_motor->tx_info->torque =fric->output.L_output;
+    fric->R_motor->tx_info->torque =fric->output.R_output;
+
+    
 }
 
 /**

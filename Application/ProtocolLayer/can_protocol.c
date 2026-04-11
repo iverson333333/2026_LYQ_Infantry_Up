@@ -19,7 +19,7 @@ void CAN1_rxDataHandler(uint32_t rxId, uint8_t *rxBuf)
 		break;
 
 	case 0x11:
-		Pitch_Motor.rx(&Pitch_Motor, rxBuf);
+		Pitch_Motor.rx(&Pitch_Motor, rxBuf); 
 		break;
 
 		// case ID_FRIC_UP:
@@ -27,7 +27,7 @@ void CAN1_rxDataHandler(uint32_t rxId, uint8_t *rxBuf)
 		// 	break;
 
 	default:
-		break;
+ 		break;
 	}
 }
 /**
