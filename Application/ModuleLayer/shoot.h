@@ -45,6 +45,7 @@
 #include "rc_sensor.h"
 #include "motor.h"
 #include "communicate.h"
+#include "PID.h"
 
 /* Public types ------------------------------------------------------------*/
 /**
@@ -56,17 +57,6 @@ typedef enum {
     FRIC_STATE_RUN = 2,       // 运行状态：PID控制到目标转速
     FRIC_STATE_REVERSE = 3,   // 反转防堵状态：反转目标转速
 } fric_state_e;
-
-/**
- * @brief  摩擦轮PID配置子结构体
- */
-typedef struct {
-    float kp;            // 比例系数
-    float ki;            // 积分系数
-    float kd;            // 微分系数
-    float integral_max;  // 积分限幅
-    float out_max;       // 输出限幅
-} fric_pid_cfg_t;
 
 /**
  * @brief  停止检测配置子结构体
@@ -105,23 +95,25 @@ typedef struct {
  * @brief  摩擦轮根配置结构体（所有可配置参数集中管理）
  */
 typedef struct {
-    fric_pid_cfg_t pid;       // PID参数
-    fric_stop_cfg_t stop;     // 停止检测配置
-    fric_block_cfg_t block;   // 堵转检测配置
-    fric_reverse_cfg_t reverse;  // 反转参数配置
-    fric_dir_cfg_t dir;       // 方向配置
+    pid_ctrl_t L_pid;           // 左摩擦轮PID参数
+    pid_ctrl_t R_pid;           // 右摩擦轮PID参数
+    fric_stop_cfg_t stop;       // 停止检测配置
+    fric_block_cfg_t block;     // 堵转检测配置
+    fric_reverse_cfg_t reverse; // 反转参数配置
+    fric_dir_cfg_t dir;         // 方向配置
 } fric_cfg_t;
 
 /**
  * @brief  摩擦轮信息结构体（外部输入解耦用）
  */
 typedef struct {
-    int16_t L_speed;      // 左摩擦轮转速
-    int16_t R_speed;       // 右摩擦轮转速
-    int16_t L_current;     // 左摩擦轮电流
-    int16_t R_current;     // 右摩擦轮电流
-    float target_speed;     // 目标转速（来自下主控，仅为大小，方向在配置中设置）
-    uint8_t rc_online;     // 遥控器在线状态
+    int16_t L_speed;        // 左摩擦轮转速（正方向）
+    int16_t R_speed;        // 右摩擦轮转速（负方向）
+    int16_t L_current;      // 左摩擦轮电流（正方向）
+    int16_t R_current;      // 右摩擦轮电流（负方向）
+    float target_speed;     // 目标转速（来自下主控）
+    int16_t target;         // PID计算目标值（左正右负）
+    uint8_t rc_online;      // 遥控器在线状态
 } fric_info_t;
 
 /**
@@ -136,6 +128,10 @@ typedef struct {
  * @brief  摩擦轮主结构体
  */
 typedef struct fric_struct_t {
+    /* 电机指针 */
+    Motor_RM_t *L_motor;      // 左摩擦轮电机指针
+    Motor_RM_t *R_motor;      // 右摩擦轮电机指针
+
     /* 外部输入（解耦用） */
     fric_info_t info;         // 摩擦轮信息
     fric_cfg_t cfg;           // 配置参数

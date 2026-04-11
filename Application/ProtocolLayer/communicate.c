@@ -15,32 +15,32 @@ uint8_t board_tx_buf_2[8];
 uint8_t board_tx_buf_3[8];
 uint8_t board_tx_buf_4[8];
 
-void Board_Tx_D1(void)
+void Board_Tx_C1(void)
 {
     memcpy(&board_tx_buf_1[0], &Board_Tx_Info.yaw_imu_angle, 4);
     memcpy(&board_tx_buf_1[4], &Board_Tx_Info.yaw_imu_speed, 4);
-    CAN_SendData(&hcan2, 0xD1, board_tx_buf_1);
+    CAN_SendData(&hcan2, 0xC1, board_tx_buf_1);
 }
 
-void Board_Tx_D2(void)
+void Board_Tx_C2(void)
 {
     memcpy(&board_tx_buf_2[0], &Board_Tx_Info.pitch_imu_angle, 4);
     memcpy(&board_tx_buf_2[4], &Board_Tx_Info.pitch_imu_speed, 4);
-    CAN_SendData(&hcan2, 0xD2, board_tx_buf_2);
+    CAN_SendData(&hcan2, 0xC2, board_tx_buf_2);
 }
 
-void Board_Tx_D3(void)
+void Board_Tx_C3(void)
 {
     memcpy(&board_tx_buf_3[0], &Board_Tx_Info.vision_target_yaw, 4);
     memcpy(&board_tx_buf_3[4], &Board_Tx_Info.vision_target_pitch, 4);
-    CAN_SendData(&hcan2, 0xD3, board_tx_buf_3);
+    CAN_SendData(&hcan2, 0xC3, board_tx_buf_3);
 }
 
-void Board_Tx_D4(void)
+void Board_Tx_C4(void)
 {
     memcpy(&board_tx_buf_4[0], &Board_Tx_Info.pitch_mec_angle, 4);
     memcpy(&board_tx_buf_4[4], &Board_Tx_Info.realtime_flag, 4);
-    CAN_SendData(&hcan2, 0xD4, board_tx_buf_4);
+    CAN_SendData(&hcan2, 0xC4, board_tx_buf_4);
 }
 
 void Board_Tx_Update(Board_Tx_Info_t *Board_Tx_Info)
@@ -49,7 +49,7 @@ void Board_Tx_Update(Board_Tx_Info_t *Board_Tx_Info)
     Board_Tx_Info->yaw_imu_speed = imu_sensor.info->base_info.rate_yaw;
     Board_Tx_Info->pitch_imu_angle = gimbal.base_info.pitch_imu_angle;
     Board_Tx_Info->pitch_imu_speed = gimbal.base_info.pitch_imu_speed;
-    Board_Tx_Info->vision_target_yaw = -vision.VtoE->yaw;
+    Board_Tx_Info->vision_target_yaw = vision.VtoE->yaw;
     Board_Tx_Info->vision_target_pitch = vision.VtoE->pitch;
     Board_Tx_Info->pitch_mec_angle = gimbal.base_info.pitch_motor_angle;
 
@@ -58,7 +58,7 @@ void Board_Tx_Update(Board_Tx_Info_t *Board_Tx_Info)
     Board_Tx_Info->flag.R_fric_online = (rm_motor[R_Fric].state->status == DEV_ONLINE) ? 1 : 0;
     Board_Tx_Info->flag.is_find_target = vision.VtoE->flag_union.bit.is_find_target;
     Board_Tx_Info->flag.hit_enable = vision.VtoE->flag_union.bit.is_enable_shootting;
-    Board_Tx_Info->flag.is_keep_shoot = 0;
+    Board_Tx_Info->flag.is_keep_shoot = vision.VtoE->flag_union.bit.is_keep_shooting;
     Board_Tx_Info->flag.is_vision_online = (vision.status->rx_state == DEV_ONLINE) ? 1 : 0;
 }
 
@@ -78,13 +78,19 @@ void Board_Rx_D2(uint8_t *rxbuf)
 void Send_To_Down_Board(void)
 {
     Board_Tx_Update(&Board_Tx_Info);
-    Board_Tx_D1();
-    Board_Tx_D2();
-    Board_Tx_D3();
-    Board_Tx_D4();
+    Board_Tx_C1();
+    Board_Tx_C2();
+    if (HAL_GetTick() % 2)
+    {
+        Board_Tx_C3();
+    }
+    else
+    {
+        Board_Tx_C4();
+    }
 }
 
-void C_Board_HeartBeat(void)
+void C_Board_Communicate_HeartBeat(void)
 {
     Board_HeartBeat.offline_cnt_pack_1++;
     Board_HeartBeat.offline_cnt_pack_2++;

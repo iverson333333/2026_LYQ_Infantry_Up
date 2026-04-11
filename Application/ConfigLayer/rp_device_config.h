@@ -71,7 +71,7 @@ typedef enum
 
 typedef enum
 {
-	UP_Fric,
+	UP_Fric=0,
 	R_Fric,
 	L_Fric,
 

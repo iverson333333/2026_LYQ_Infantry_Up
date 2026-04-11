@@ -19,8 +19,8 @@ void StartControlTask(void const * argument)
         gimbal.work(&gimbal);
         fric.work(&fric);
         Vision_Board_Update();
-        Vision_DataTx(&huart1);
-        All_CAN_Send_Here();
+        Vision_DataTx(); 
+        All_CAN_Send_Here(); 
         osDelay(1);
     }
 }

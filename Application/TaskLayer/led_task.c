@@ -1,15 +1,12 @@
 #include "led_task.h"
 
 
-void StartLedTask(void const * argument)
+void StartLedTask(void const *argument)
 {
-	
-  for(;;)
-  {		
-	  
-		osDelay(1);
+
+  for (;;)
+  {
+	led_work(&led);
+    osDelay(1);
   }
 }
-
-
-

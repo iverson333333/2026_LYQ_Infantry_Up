@@ -38,6 +38,5 @@ typedef struct gimbal_class_t
 extern gimbal_t gimbal;
 extern Motor_DM_t Pitch_Motor;
 
-void Gimbal_Init(gimbal_t *gimbal);   // 初始化函数（绑定函数指针）
 
 #endif

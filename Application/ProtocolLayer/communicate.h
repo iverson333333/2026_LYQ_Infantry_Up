@@ -12,14 +12,16 @@
 // 上板给下板发送的结构体 (Up Tx = Down Rx)
 typedef struct
 {
-    float yaw_imu_angle;       // yaw陀螺仪角度
-    float yaw_imu_speed;       // yaw陀螺仪角速度
-    float pitch_imu_angle;     // pitch陀螺仪角度
-    float pitch_imu_speed;     // pitch陀螺仪角速度
+    float yaw_imu_angle; // yaw陀螺仪角度
+    float yaw_imu_speed; // yaw陀螺仪角速度
+
+    float pitch_imu_angle; // pitch陀螺仪角度
+    float pitch_imu_speed; // pitch陀螺仪角速度
+
     float vision_target_yaw;   // 视觉发过来的yaw
     float vision_target_pitch; // 视觉发过来的pitch
-    float pitch_mec_angle;     // pitch机械角度
 
+    float pitch_mec_angle; // pitch机械角度
     __packed union
     {
         uint32_t realtime_flag;
@@ -79,6 +81,6 @@ void Board_Rx_D1(uint8_t *rxbuf);
 void Board_Rx_D2(uint8_t *rxbuf);
 
 void Send_To_Down_Board(void);
-void C_Board_HeartBeat(void);
+void C_Board_Communicate_HeartBeat(void);
 
 #endif
