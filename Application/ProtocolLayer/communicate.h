@@ -46,15 +46,23 @@ typedef struct
 
     __packed union
     {
+
         uint32_t realtime_flag;
+
         __packed struct
+
         {
-            uint8_t our_color_flag : 1;
-            uint8_t is_rc_online : 1;
-            uint8_t is_ready_shoot : 1;
-            uint8_t is_game_in_progress : 1;
-            uint8_t is_energy_engine_mode : 1;
+            uint8_t our_color_flag : 1;              // 本方颜色
+            uint8_t is_rc_online : 1;                // 遥控器在线
+            uint8_t is_ready_shoot : 1;              // 可以马上发射
+            uint8_t is_game_in_progress : 1;         // 比赛进行中
+            uint8_t is_big_energy_engine_mode : 1;   // 大符模式
+            uint8_t is_small_energy_engine_mode : 1; // 小符模式
+            uint8_t is_outpost_mode : 1;             // 前哨模式
+            uint8_t is_hero_mode : 1;                // 英雄模式
+
         } bit;
+
     } flag;
 } Board_Rx_Info_t;
 

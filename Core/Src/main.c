@@ -214,7 +214,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		if ((imu_sensor.work_state.err_code == IMU_NONE_ERR) || \
 				(imu_sensor.work_state.err_code == IMU_DATA_CALI))
 		{
+			#if !IMU_USE_EKF
 			imu_sensor.update(&imu_sensor);
+			#endif
 			
 		}
 		

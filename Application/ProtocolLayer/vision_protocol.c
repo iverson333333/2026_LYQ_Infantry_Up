@@ -32,25 +32,17 @@
 
 #include "crc.h"
 
-
-
 void Vision_TxTime_Calculating(void);
 
 void Append_Vision_Timing_Buff(uint32_t *vision_timing_buff, uint8_t size, uint16_t delay);
-
-
 
 ElectricalToVisionFrame vision_tx_info =
 
 	{
 
-		.SOF = 0xA5,	// 帧首字节
-
-		.bullet_id = 0, // 初始化时为0
+		.SOF = 0xA5, // 帧首字节
 
 };
-
-
 
 VisionToElectricalFrame vision_rx_info;
 
@@ -86,11 +78,7 @@ Vision_t vision =
 
 };
 
-
-
 uint8_t vision_txBuf[80];
-
-
 
 /**
 
@@ -108,17 +96,12 @@ void Vision_TxTime_Calculating(void)
 
 	static uint32_t last_tick = 0;
 
-
-
-	uint32_t tick = HAL_GetTick();				 // 记录现在的tick值
+	uint32_t tick = HAL_GetTick(); // 记录现在的tick值
 
 	vision.status->send_time = tick - last_tick; // 计算发送间隔
 
 	last_tick = tick;
-
 }
-
-
 
 /**
 
@@ -159,30 +142,10 @@ void Vision_DataRx(uint8_t *rxBuf)
 				vision.status->offline_cnt = 0;
 
 				vision.status->rx_tick = HAL_GetTick(); // 记录接受到信息时的时间，好像没用到
-
-				// 添加发射时间戳
-
-				if (vision.VtoE->flag_union.bit.is_enable_shootting == 1)
-
-				{
-
-					Append_Vision_Timing_Buff((uint32_t *)vision.timestamp_info->vision_shoot_timing,
-
-											  sizeof(vision.timestamp_info->vision_shoot_timing) / sizeof(vision_timestamp_info.vision_shoot_timing[0]),
-
-											  vision.VtoE->timing);
-
-				}
-
 			}
-
 		}
-
 	}
-
 }
-
-
 
 /**
 
@@ -196,11 +159,9 @@ void Vision_DataTx(void)
 
 	memcpy(vision_txBuf, &vision_tx_info, sizeof(ElectricalToVisionFrame)); // 设置发送信息
 
-	Append_CRC8_Check_Sum(vision_txBuf, 6);									// 添加CRC8校验码
+	Append_CRC8_Check_Sum(vision_txBuf, 6); // 添加CRC8校验码
 
-	Append_CRC16_Check_Sum(vision_txBuf, sizeof(ElectricalToVisionFrame));	// 添加CRC16校验码
-
-
+	Append_CRC16_Check_Sum(vision_txBuf, sizeof(ElectricalToVisionFrame)); // 添加CRC16校验码
 
 	if (CDC_Transmit_FS(vision_txBuf, sizeof(ElectricalToVisionFrame)) == USBD_OK) // 串口发送
 
@@ -209,7 +170,6 @@ void Vision_DataTx(void)
 		vision.status->tx_state = DEV_ONLINE;
 
 		Vision_TxTime_Calculating(); // 发送时间间隔计算
-
 	}
 
 	else
@@ -217,19 +177,14 @@ void Vision_DataTx(void)
 	{
 
 		vision.status->tx_state = DEV_OFFLINE;
-
 	}
-
 }
-
-
 
 void USART1_rxDataHandler(uint8_t *rxBuf) // 后续换指针
 
 {
 
 	Vision_DataRx(rxBuf);
-
 }
 
 /*视觉上板更新*/
@@ -237,51 +192,22 @@ void USART1_rxDataHandler(uint8_t *rxBuf) // 后续换指针
 void Vision_Board_Update(void)
 
 {
-
+	vision.EtoV->flag_union.bit.big_energy_engine_mode = Board_Rx_Info.flag.bit.is_big_energy_engine_mode;
+	vision.EtoV->flag_union.bit.small_energy_engine_mode = Board_Rx_Info.flag.bit.is_small_energy_engine_mode;
 	vision.EtoV->flag_union.bit.is_ready = Board_Rx_Info.flag.bit.is_ready_shoot;
-
+	vision.EtoV->flag_union.bit.outpost_mode = Board_Rx_Info.flag.bit.is_outpost_mode;
 	vision.EtoV->flag_union.bit.own_color = Board_Rx_Info.flag.bit.our_color_flag;
-
-
-	if(Board_Rx_Info.flag.bit.is_energy_engine_mode == 1)
-
-	{
-
-		vision.EtoV->flag_union.bit.energy_engine_mode = 1;
-
-	}
-
-	else
-
-	{
-
-		vision.EtoV->flag_union.bit.energy_engine_mode = 0;
-
-	}
-
-
-
-
 
 	vision.EtoV->yaw = Board_Tx_Info.yaw_imu_angle;
 
-	vision.EtoV->pitch = Board_Tx_Info.pitch_imu_angle; 
+	vision.EtoV->pitch = Board_Tx_Info.pitch_imu_angle;
 
 	vision.EtoV->pitch_speed = Board_Tx_Info.pitch_imu_speed;
 
 	vision.EtoV->yaw_speed = Board_Tx_Info.yaw_imu_speed;
 
-
-
-	vision.EtoV->roll = (-imu_sensor.info->base_info.pitch - 0.77);
-
-	
-
-}
-
-
-
-
+	vision.EtoV->roll = imu_sensor.info->base_info.roll;
+} 
 
 /**
 
@@ -309,10 +235,7 @@ void Vision_HearBeat(void)
 
 			vision.status->offline_cnt_max;
 
-
-
 		vision.status->rx_state = DEV_OFFLINE;
-
 	}
 
 	else if (vision.status->rx_state == DEV_OFFLINE)
@@ -320,9 +243,7 @@ void Vision_HearBeat(void)
 	{
 
 		vision.status->rx_state = DEV_ONLINE;
-
 	}
-
 }
 
 /**
@@ -344,7 +265,6 @@ void Append_Vision_Timing_Buff(uint32_t *vision_timing_buff, uint8_t size, uint1
 	{
 
 		return; // 如果数组大小为0或负数，直接返回
-
 	}
 
 	if (delay == 0)
@@ -352,7 +272,6 @@ void Append_Vision_Timing_Buff(uint32_t *vision_timing_buff, uint8_t size, uint1
 	{
 
 		delay = 1;
-
 	}
 
 	// 将剩余的元素前移一格
@@ -362,13 +281,11 @@ void Append_Vision_Timing_Buff(uint32_t *vision_timing_buff, uint8_t size, uint1
 	{
 
 		vision_timing_buff[i - 1] = vision_timing_buff[i];
-
 	}
 
 	// 在数组的最后一个位置添加形参的值
 
 	vision_timing_buff[size - 1] = delay + HAL_GetTick();
-
 }
 
 /**
@@ -392,10 +309,7 @@ void Vision_led_work(void)
 		led.colour = LED_colour_red;
 
 		led.state = LED_ON;
-
 	}
-
-
 
 	else if (vision.VtoE->flag_union.bit.is_find_target == 1)
 
@@ -404,10 +318,7 @@ void Vision_led_work(void)
 		led.colour = LED_colour_green;
 
 		led.state = LED_ON;
-
 	}
-
-
 
 	else if (vision.status->rx_state == DEV_ONLINE)
 
@@ -416,18 +327,12 @@ void Vision_led_work(void)
 		led.colour = LED_colour_green;
 
 		led.state = LED_BLINK;
-
 	}
-
-
 
 	else
 
 	{
 
 		led.state = LED_OFF;
-
 	}
-
 }
-

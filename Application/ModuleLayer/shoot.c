@@ -198,8 +198,12 @@ static void Fric_Extern_Update(fric_t *fric)
     // 更新左摩擦轮电流
     fric->info.L_current = fric->L_motor->rx_info->torque_current_raw;
 
+    
     // 更新右摩擦轮电流
     fric->info.R_current = fric->R_motor->rx_info->torque_current_raw;
+
+    fric->info.L_speed_abs = my_abs(fric->info.L_speed);
+    fric->info.R_speed_abs = my_abs(fric->info.R_speed);
 }
 
 /**

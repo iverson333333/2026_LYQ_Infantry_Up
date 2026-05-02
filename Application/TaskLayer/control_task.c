@@ -1,8 +1,7 @@
 /**
  ******************************************************************************
  * @file    control_task.c
- * @brief   上主控控制任务（云台+发射+视觉）
- *          注意：底盘控制逻辑在下主控
+ * @brief   上主控控制任务
  ******************************************************************************
  */
 #include "control_task.h"
@@ -11,9 +10,11 @@
 static void All_CAN_Send_Here(void);
 void StartControlTask(void const *argument)
 {
-
     for (;;)
     {
+		#if IMU_USE_EKF
+			imu_sensor.update(&imu_sensor);
+			#endif
         gimbal.work(&gimbal);
         fric.work(&fric);
         Vision_Board_Update();
@@ -22,6 +23,7 @@ void StartControlTask(void const *argument)
         osDelay(1);
     }
 }
+
 void All_CAN_Send_Here(void)
 {
     if (Board_Rx_Info.flag.bit.is_rc_online == 1)

@@ -47,8 +47,8 @@ void Board_Tx_Update(Board_Tx_Info_t *Board_Tx_Info)
 {
     Board_Tx_Info->yaw_imu_angle = imu_sensor.info->base_info.yaw;
     Board_Tx_Info->yaw_imu_speed = imu_sensor.info->base_info.rate_yaw;
-    Board_Tx_Info->pitch_imu_angle = gimbal.base_info.pitch_imu_angle;
-    Board_Tx_Info->pitch_imu_speed = gimbal.base_info.pitch_imu_speed;
+    Board_Tx_Info->pitch_imu_angle = imu_sensor.info->base_info.pitch;
+    Board_Tx_Info->pitch_imu_speed = imu_sensor.info->base_info.ave_rate_pitch;
     Board_Tx_Info->vision_target_yaw = vision.VtoE->yaw;
     Board_Tx_Info->vision_target_pitch = vision.VtoE->pitch;
     Board_Tx_Info->pitch_mec_angle = gimbal.base_info.pitch_motor_angle;

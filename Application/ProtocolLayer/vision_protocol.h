@@ -37,7 +37,6 @@
 */
 
 typedef struct __attribute__((packed))
-
 {
 
 	uint8_t SOF; // 帧头，数据帧的起始标志
@@ -50,19 +49,21 @@ typedef struct __attribute__((packed))
 		__packed struct
 		{
 
-			uint8_t own_color : 1; // 位0：己方颜色
+			uint8_t own_color : 1; // 己方颜色
 
-			uint8_t game_start : 1; // 位1：比赛开始
+			uint8_t game_start : 1; // 比赛开始
 
-			uint8_t is_ready : 1; // 位2：是否允许打弹（热量够 && 复位完毕）
+			uint8_t is_ready : 1; // 是否允许打弹（热量够 && 复位完毕）
 
-			uint8_t outpost_mode : 1; // 位3：只锁前哨模式
+			uint8_t outpost_mode : 1; // 前哨模式
 
-			uint8_t energy_engine_mode : 1; // 打符模式
+			uint8_t big_energy_engine_mode : 1; // 大符模式
 
-			//	 uint8_t is_com_vision:1;
+			uint8_t small_energy_engine_mode : 1; // 小符模式
 
-			uint32_t reserved : 26; // 位6-31：可扩展
+			uint8_t hero_mode : 1; // 英雄模式
+
+			uint32_t reserved : 25; // 位6-31：可扩展
 
 		} bit; // 按位访问的子结构
 
@@ -80,21 +81,7 @@ typedef struct __attribute__((packed))
 
 	float pitch_speed; // pitch轴速度
 
-	int8_t pitch_offset; // pitch轴偏移量（电控退自瞄后清零）
-
-	int8_t yaw_offset; // yaw轴偏移量（电控退自瞄后清零）
-
-	// float bullet_speed; // 子弹速度
-
-	uint16_t bullet_id; // 每打出一发加1
-
 	uint32_t user_debug; // 用户调试信息：
-
-	// - 单发模式：接收命令到子弹过测速模块的延时（ms）
-
-	// - 连发模式：发射子弹的间隔时间（ms）
-
-	// - 通用：用于调试目的
 
 	uint16_t CRC16; // 循环冗余校验，用于校验整个数据帧的完整性
 
@@ -109,7 +96,6 @@ typedef struct __attribute__((packed))
 typedef struct __attribute__((packed))
 
 {
-
 	uint8_t SOF; // 帧头，数据帧的起始标志
 
 	__packed union
@@ -126,7 +112,7 @@ typedef struct __attribute__((packed))
 
 			uint8_t is_enable_shootting : 1; // 位2：用于是否可以打弹
 
-			uint8_t detect_num : 4; // 位3-6：锁到几号（占用4位，支持0-15编号
+			uint8_t detect_num : 4; // 位3-6：锁到几号（占用4位，支持0-15编号)
 
 			uint32_t reserved : 25; // 位7-31：保留位
 
@@ -139,8 +125,6 @@ typedef struct __attribute__((packed))
 	float yaw; // 目标yaw角
 
 	float pitch; // 目标pitch角
-
-	uint16_t timing; // 发射延时
 
 	uint32_t user_debug; // 用户调试信息，自定义debug
 

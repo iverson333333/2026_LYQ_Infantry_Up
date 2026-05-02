@@ -109,6 +109,8 @@ typedef struct {
 typedef struct {
     int16_t L_speed;        // 左摩擦轮转速（正方向）
     int16_t R_speed;        // 右摩擦轮转速（负方向）
+      int16_t L_speed_abs;        // 左摩擦轮转速绝对值
+    int16_t R_speed_abs;        // 右摩擦轮转速绝对值
     int16_t L_current;      // 左摩擦轮电流（正方向）
     int16_t R_current;      // 右摩擦轮电流（负方向）
     float target_speed;     // 目标转速（来自下主控）

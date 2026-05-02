@@ -19,7 +19,6 @@ void StartMonitorTask(void const *argument)
 		rm_motor_list_heart_beat();
 
 		C_Board_Communicate_HeartBeat();
-		//	rc_sensor.heart_beat(&rc_sensor);
 		Vision_HearBeat();
 		Vision_Sta_led_work();
 		osDelay(1);
